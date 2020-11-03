@@ -11,23 +11,46 @@ namespace Electronic_journal
             FullScreen = 0,
             Fixed = 1
         }
+
+        [Flags]
         public enum WindowAlign
         {
-            Center = 0,
-            TopLeft = 1,
-            Top = 2,
-            TopRight = 3,
+            Center = 1,
+            Left = 2,
             Right = 4,
-            BottomRight = 5,
-            Bottom = 6,
-            BottomLeft = 7,
-            Left = 8
+            Top = 8,
+            Bottom = 16
         }
-        public WindowMode Mode;
-        public WindowAlign Align;
+        public WindowMode Mode { get; set; }
+        public WindowAlign Align { get; set; }
 
-        public bool Visible;
+        public bool Visible { get; set; } = true;
 
+        public string Name { get; set; }
 
+        public int Margin { 
+            set
+            {
+                MarginTop = MarginRight = MarginBottom = MarginLeft = value;
+            }
+        }
+        public int MarginTop { get; set; }
+        public int MarginRight { get; set; }
+        public int MarginBottom { get; set; }
+        public int MarginLeft { get; set; }
+
+        //public Layout Layout { get; set; }
+
+        public Window(string name)
+        {
+            Name = name;
+            Mode = WindowMode.FullScreen;
+
+        }
+
+        public void Redraw()
+        {
+
+        }
     }
 }
