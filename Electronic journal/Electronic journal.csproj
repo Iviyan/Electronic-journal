@@ -6,4 +6,8 @@
     <RootNamespace>Electronic_journal</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="ConsoleHelper\" />
+  </ItemGroup>
+
 </Project>

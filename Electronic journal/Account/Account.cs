@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace Electronic_journal
 {
-    public abstract class Account
+    public abstract class Account : ICustomSerializable
     {
-        public string Login { get; protected set; }
+        public string Login { get; }
         public string Password { get; protected set; }
 
         public enum AccountType : byte
@@ -15,8 +16,6 @@ namespace Electronic_journal
             Teacher,
             Student
         }
-        
-        
         public AccountType Type { get; }
 
         public Account(string login, string password, AccountType type)
@@ -24,6 +23,14 @@ namespace Electronic_journal
             Login = login;
             Password = password;
             Type = type;
+        }
+        public Account(BinaryReader reader, AccountType type) : this(reader.ReadString(), reader.ReadString(), type) { }
+
+        public virtual void Export(BinaryWriter writer)
+        {
+            writer.Write((byte)Type);
+            writer.Write(Login);
+            writer.Write(Password);
         }
     }
 }
