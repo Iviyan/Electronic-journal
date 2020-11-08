@@ -13,7 +13,6 @@ namespace Electronic_journal
         public override void Export(BinaryWriter writer)
         {
             base.Export(writer);
-            writer.Flush();
         }
     }
 }

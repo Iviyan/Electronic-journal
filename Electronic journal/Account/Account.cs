@@ -24,13 +24,13 @@ namespace Electronic_journal
             Password = password;
             Type = type;
         }
-        public Account(BinaryReader reader, AccountType type) : this(reader.ReadString(), reader.ReadString(), type) { }
+        public Account(BinaryReader reader, AccountType type) : this(reader.ReadString(), reader.ReadString(), type) { reader.BaseStream.Position++; }
 
         public virtual void Export(BinaryWriter writer)
         {
-            writer.Write((byte)Type);
             writer.Write(Login);
             writer.Write(Password);
+            writer.Write((byte)Type);
         }
     }
 }

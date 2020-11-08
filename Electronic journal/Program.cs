@@ -7,14 +7,25 @@ namespace Electronic_journal
 {
     class Program
     {
-        public static readonly string[] a = { "123", "321" };
+        //public static readonly string[] a = { "123", "321" };
         static void Main(string[] args)
         {
             //Admin a = new Admin();
-            //Settings settings = new Settings();
-            Console.WriteLine(a[0]);
+            Settings settings = new Settings();
+
+            Console.WriteLine("Авторизация:");
+            Console.Write("Логин: ");
+            string login = Console.ReadLine();
+            Console.Write("Пароль: ");
+            string pass = Console.ReadLine();
+
+            Account a = settings.TryLogin(login, pass);
+            Console.WriteLine((int)a.Type);
+
+            
+            /*Console.WriteLine(a[0]);
             a[0] = "222";
-            Console.WriteLine(a[0]);
+            Console.WriteLine(a[0]);*/
 
             //using (FileStream fstream = File.Open("1.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
             {

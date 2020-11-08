@@ -12,6 +12,8 @@ namespace Electronic_journal
 
         public readonly string FilePatch;
 
+        public bool Exists => File.Exists(FilePatch);
+
         public FileStream GetsFileStream(FileMode fileMode = FileMode.OpenOrCreate) => File.Open(FilePatch, fileMode);
         public FileStream GetFileStream(FileMode fileMode = FileMode.OpenOrCreate) => File.Open(FilePatch, fileMode);
 

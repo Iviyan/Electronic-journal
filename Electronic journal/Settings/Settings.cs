@@ -8,24 +8,9 @@ namespace Electronic_journal
     public class Settings
     {
         public string FolderName { get; }
-        public string AccountsDataFileName { get; }
-        public string SubjectsDataFileName { get; }
-        public string GroupsDataFileName { get; }
-
-        public readonly string AccountsDataFilePatch;
-        public readonly string SubjectsDataFilePatch;
-        public readonly string GroupsDataFilePatch;
-
-        FileStream GetAccountsDataFileStream(FileMode fileMode = FileMode.OpenOrCreate) => File.Open(AccountsDataFilePatch, fileMode);
-        FileStream GetSubjectsDataFileStream(FileMode fileMode = FileMode.OpenOrCreate) => File.Open(SubjectsDataFilePatch, fileMode);
-        FileStream GetGroupsDataFileStream(FileMode fileMode = FileMode.OpenOrCreate) => File.Open(SubjectsDataFilePatch, fileMode);
-
-        public BinaryWriter GetAccountsDataFileWriter(FileMode fileMode = FileMode.Append) => new BinaryWriter(GetAccountsDataFileStream(fileMode));
-        public BinaryReader GetAccountsDataFileReader(FileMode fileMode = FileMode.Open) => new BinaryReader(GetAccountsDataFileStream(fileMode));
-        public BinaryWriter GetSubjectsDataFileWriter(FileMode fileMode = FileMode.Append) => new BinaryWriter(GetSubjectsDataFileStream(fileMode));
-        public BinaryReader GetSubjectsDataFileReader(FileMode fileMode = FileMode.Open) => new BinaryReader(GetSubjectsDataFileStream(fileMode));
-        public BinaryWriter GetGroupsDataFileWriter(FileMode fileMode = FileMode.Append) => new BinaryWriter(GetGroupsDataFileStream(fileMode));
-        public BinaryReader GetGroupsDataFileReader(FileMode fileMode = FileMode.Open) => new BinaryReader(GetGroupsDataFileStream(fileMode));
+        public SettingsFile AccountsSettingsFile { get; }
+        //public SettingsFile SubjectsSettingsFile { get; }
+        public SettingsFile GroupsSettingsFile { get; }
 
         public const string DefaultAdminLogin = "admin";
         public const string DefaultAdminPassword = "admin";
@@ -35,45 +20,66 @@ namespace Electronic_journal
 
         public Settings(
             string folderName = "Electronic Journal",
-            string accountsDataFileName = "Accounts.dat",
-            string subjectsDataFileName = "Subjects.dat",
-            string groupsDataFileName = "Groups.dat"
+            string accountsFileName = "Accounts.dat",
+            string subjectsFileName = "Subjects.dat",
+            string groupsFileName = "Groups.dat"
             )
         {
             FolderName = folderName;
-            AccountsDataFileName = accountsDataFileName;
-            SubjectsDataFileName = subjectsDataFileName;
-            GroupsDataFileName = groupsDataFileName;
-
-            AccountsDataFilePatch = @$"{FolderName}\{AccountsDataFileName}";
-            SubjectsDataFilePatch = @$"{FolderName}\{SubjectsDataFileName}";
+            AccountsSettingsFile = new SettingsFile(accountsFileName, folderName);
+            //SubjectsSettingsFile = new SettingsFile(subjectsFileName, folderName);
+            GroupsSettingsFile = new SettingsFile(groupsFileName, folderName);
 
             if (!Directory.Exists(FolderName)) Directory.CreateDirectory(FolderName);
 
-            if (!File.Exists(AccountsDataFilePatch))
-                using (BinaryWriter writer = GetAccountsDataFileWriter())
-                    new Admin(DefaultAdminLogin, DefaultAdminPassword).Export(writer);
-
-            if (!File.Exists(SubjectsDataFilePatch))
-                GetSubjectsDataFileStream().Dispose();
-            else
-            {
-                using (BinaryReader reader = GetSubjectsDataFileReader())
-                    while (reader.PeekChar() > -1)
-                        subjects.Add(reader.ReadString());
-            }
+            if (!AccountsSettingsFile.Exists)
+                AddAccount(new Admin(DefaultAdminLogin, DefaultAdminPassword));
 
         }
 
-        public bool TryLogin(string login, string password)
+        public void AddAccount(Account account)
         {
-            using (BinaryReader reader = GetAccountsDataFileReader())
+            using (BinaryWriter writer = AccountsSettingsFile.GetFileWriter())
+            {
+                writer.BaseStream.Position += 2;
+                long startPosition = writer.BaseStream.Position;
+                account.Export(writer);
+                long length = writer.BaseStream.Position - startPosition;
+                writer.BaseStream.Position = 0;
+                writer.Write((ushort)length);
+            }
+        }
+
+        public Account LoadAccount(BinaryReader reader) => LoadAccount(reader, reader.ReadString(), reader.ReadString());
+        public Account LoadAccount(BinaryReader reader, string login, string pass)
+        {
+            Account.AccountType type = (Account.AccountType)reader.ReadByte();
+            switch (type)
+            {
+                case Account.AccountType.Admin: return new Admin(login, pass);
+                case Account.AccountType.Teacher: return new Teacher(login, pass, reader);
+                case Account.AccountType.Student: return new Student(login, pass, reader);
+            }
+            throw new FormatException("Wrong account type");
+        }
+
+        public Account TryLogin(string login, string password)
+        {
+            using (BinaryReader reader = AccountsSettingsFile.GetFileReader())
             {
                 while (reader.PeekChar() > -1)
                 {
-
+                    ushort len = reader.ReadUInt16();
+                    long pos = reader.BaseStream.Position;
+                    if (login == reader.ReadString())
+                    {
+                        if (password == reader.ReadString())
+                            return LoadAccount(reader, login, password);
+                    }
+                    else
+                        reader.BaseStream.Position = pos + len;
                 }
-                return true;
+                return null;
             }
         }
     }
@@ -81,12 +87,11 @@ namespace Electronic_journal
 /* Структура файлов:
  * Accounts.dat 
  * [
- *   тип учётной записи : (AccountType : byte),
+ *   length : ushort   --! размер данных аккаунта не должен превышать 65535 байт
  *   login : string,
  *   pass : string,
+ *   тип учётной записи : (AccountType : byte),
  *   ... (параметры)
  * ]
- * 
- * Subjects.dat - string[] - список дисциплин
  * 
  */

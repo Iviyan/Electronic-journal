@@ -18,6 +18,20 @@ namespace Electronic_journal
             Patronymic = patronymic;
             Birthday = birthday;
         }
+        public Person(string login, string password, AccountType type, BinaryReader reader) : base(login, password, type)
+        {
+            FirstName = reader.ReadString();
+            LastName = reader.ReadString();
+            Patronymic = reader.ReadString();
+            Birthday = reader.ReadDateTime();
+        }
+        public Person(AccountType type, BinaryReader reader) : base(reader, type)
+        {
+            FirstName = reader.ReadString();
+            LastName = reader.ReadString();
+            Patronymic = reader.ReadString();
+            Birthday = reader.ReadDateTime();
+        }
 
         public override void Export(BinaryWriter writer)
         {
@@ -26,14 +40,6 @@ namespace Electronic_journal
             writer.Write(LastName);
             writer.Write(Patronymic);
             writer.Write(Birthday);
-        }
-
-        public static void SkipRead(BinaryReader reader)
-        {
-            reader.SkipString(); //
-            reader.SkipString();
-            reader.SkipString();
-            reader.ReadInt64(); // DateTime
         }
     }
 }
