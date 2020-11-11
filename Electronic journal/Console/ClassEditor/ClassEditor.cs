@@ -4,11 +4,13 @@ using System.Text;
 
 namespace Electronic_journal
 {
-    public static class Authorization
+    public class ClassEditor<T>
     {
-        public static Account Login()
+        public T Obj { get; }
+
+        public ClassEditor(T obj)
         {
-            return null;
+            
         }
     }
 }

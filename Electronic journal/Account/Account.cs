@@ -7,8 +7,10 @@ namespace Electronic_journal
 {
     public abstract class Account : ICustomSerializable
     {
-        public string Login { get; }
-        public string Password { get; protected set; }
+        [Editor("Логин")]
+        public string Login { get; set; }
+        [Editor("Пароль")]
+        public string Password { get; set; }
 
         public enum AccountType : byte
         {

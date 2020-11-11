@@ -1,17 +1,74 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Electronic_journal
 {
     class Program
     {
-        //public static readonly string[] a = { "123", "321" };
         static void Main(string[] args)
         {
-            //Admin a = new Admin();
             Settings settings = new Settings();
+            string[] mainMenu = new string[]
+                {
+                    "Группы",
+                    "Аккаунты",
+                    "Добавить аккаунт",
+                    "Добавить группу",
+                    "Сменить пароль"
+                };
+            string[] groupsMenu;
+            string[] accountsMenu;
+
+            ConsoleSelect menu = new ConsoleSelect(
+                mainMenu
+            );
+            void ShowMainMenu(bool updateMenu = true, int from = 0)
+            {
+                if (updateMenu) menu.Update(mainMenu);
+                switch (menu.Choice(from))
+                {
+                    case 0:
+                        break;
+                    case 1:
+                        ShowAccountsMenu();
+                        break;
+                    case 2:
+                        ShowAccountsMenu();
+                        break;
+                }
+            }
+            void ShowAccountsMenu()
+            {
+                accountsMenu = settings.GetAccountsList().Keys.ToArray();
+                menu.Update(accountsMenu);
+                int sel = menu.Choice(
+                    (ConsoleKeyInfo key, int selectedIndex) =>
+                    {
+                        if (key.Key == ConsoleKey.Escape)
+                        {
+                            ShowMainMenu(from: 1);
+                        };
+                        return false;
+                    }
+                );
+
+            }
+            void ShowAccountEditMenu(int posInFile)
+            {
+                Account account = settings.LoadAccount(posInFile);
+                menu.Clear();
+
+            }
+            ShowMainMenu(false);
+            return;
+            //Console.WriteLine((int)Math.Ceiling("1234567".Length / (double)3));
+
+            //Settings settings = new Settings();
 
             Console.WriteLine("Авторизация:");
             Console.Write("Логин: ");
@@ -20,12 +77,17 @@ namespace Electronic_journal
             string pass = Console.ReadLine();
 
             Account a = settings.TryLogin(login, pass);
-            Console.WriteLine((int)a.Type);
+            Console.WriteLine(a.Type);
 
-            
-            /*Console.WriteLine(a[0]);
-            a[0] = "222";
-            Console.WriteLine(a[0]);*/
+            Console.ReadKey();
+            Console.Clear();
+
+            ((IUI)a).UI();
+            /*switch (a.Type)
+            {
+                case Account.AccountType.Admin: 
+            }*/
+
 
             //using (FileStream fstream = File.Open("1.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
             {

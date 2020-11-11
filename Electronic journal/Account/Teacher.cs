@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Electronic_journal
 {
-    public class Teacher : Person, ICustomSerializable
+    public class Teacher : Person, ICustomSerializable, IUI
     {
         public string[] Subjects { get; set; }
         public string[] Groups { get; set; }
@@ -36,5 +36,9 @@ namespace Electronic_journal
             writer.Write(Groups);
         }
 
+        public void UI()
+        {
+
+        }
     }
 }
