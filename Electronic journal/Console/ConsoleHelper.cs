@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 
@@ -9,14 +10,15 @@ namespace Electronic_journal
     {
         public static void ClearArea(int x1, int y1, int x2, int y2)
         {
-            var pos = (Console.CursorLeft, Console.CursorTop);
-            int width = x2 - x1 + 1;
-            for (; y1 <= y2; y1++)
+            using (new CursonPosition())
             {
-                Console.SetCursorPosition(x1, y1);
-                Console.Write(new string(' ', width));
+                int width = x2 - x1 + 1;
+                for (; y1 <= y2; y1++)
+                {
+                    Console.SetCursorPosition(x1, y1);
+                    Console.Write(new string(' ', width));
+                }
             }
-            Console.SetCursorPosition(pos.CursorLeft, pos.CursorTop);
         }
 
 
@@ -30,5 +32,22 @@ namespace Electronic_journal
             Console.Write(text);
             if (fillRight != ' ') { Console.Write(new string(fillRight, length - (startX - x1 + text.Length))); }
         }
+    }
+    public class CursonPosition : IDisposable
+    {
+        public int CursorLeft, CursorTop;
+        public CursonPosition() => (CursorTop, CursorLeft) = (Console.CursorTop, Console.CursorLeft);
+        public CursonPosition(int cursorLeft, int cursorTop)
+        {
+            (CursorLeft, CursorTop) = (Console.CursorLeft, Console.CursorTop);
+            (Console.CursorLeft, Console.CursorTop) = (cursorLeft, cursorTop);
+        }
+        public void Dispose() => Console.SetCursorPosition(CursorLeft, CursorTop);
+    }
+    public class UseConsoleColor : IDisposable
+    {
+        public ConsoleColor Color;
+        public UseConsoleColor(ConsoleColor color) => (Color, Console.ForegroundColor) = (Console.ForegroundColor, color);
+        public void Dispose() => Console.ForegroundColor = Color;
     }
 }

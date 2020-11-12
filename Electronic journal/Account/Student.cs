@@ -7,7 +7,8 @@ namespace Electronic_journal
 {
     public class Student : Person, ICustomSerializable, IUI
     {
-        public string Group { get; private set; }
+        [Editor("Группа")]
+        public string Group { get; set; }
 
         public Student(string login, string password, string firstName, string lastName, string patronymic, DateTime birthday, string group)
             : base(login, password, AccountType.Teacher, firstName, lastName, patronymic, birthday)

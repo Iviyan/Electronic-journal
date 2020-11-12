@@ -7,10 +7,15 @@ namespace Electronic_journal
 {
     public abstract class Person : Account
     {
-        public string FirstName { get; protected set; }
-        public string LastName { get; protected set; }
-        public string Patronymic { get; protected set; }
-        public DateTime Birthday { get; protected set; }
+        [Editor("Имя")]
+        public string FirstName { get; set; }
+        [Editor("Фамилия")]
+        public string LastName { get; set; }
+        [Editor("Отчество")]
+        public string Patronymic { get; set; }
+        [Editor("Дата рождения")]
+        [DateTimeMode(OnlyDate = true)]
+        public DateTime Birthday { get; set; }
         public Person(string login, string password, AccountType type, string firstName, string lastName, string patronymic, DateTime birthday) : base(login, password, type)
         {
             FirstName = firstName;

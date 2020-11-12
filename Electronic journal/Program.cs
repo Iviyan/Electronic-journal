@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 
@@ -10,9 +9,48 @@ namespace Electronic_journal
 {
     class Program
     {
+        /*public class AB
+        {
+            [Editor("AAA")]
+            public int a { get; set; }
+            [Editor("BBBBB")]
+            public int b { get; set; }
+            [Editor("DD")]
+            [DateTimeMode(OnlyDate = true)]
+            public DateTime d { get; set; }
+        }*/
         static void Main(string[] args)
         {
+            //Admin a = new Admin();
+
+            //Reader.ReadLine_esc();
             Settings settings = new Settings();
+
+            /*AB ab = new AB();
+            ab.a = 123;
+            new ClassEditor<AB>(ab,
+                (AB ab_, out string msg) =>
+                {
+                    if (ab_.b <= 0)
+                    {
+                        msg = "B должна быть больше 0";
+                        return false;
+                    }
+                    msg = ""; return true;
+                }
+                ).Edit();
+            Helper.mb(ab.a, " ", ab.b, " ", ab.d);
+            Console.Read();*/
+            var st = new Student("", "", "", "", "", DateTime.Today, "");
+            new ClassEditor<Student>(st,
+                (Student ab_, out string msg) =>
+                {
+                    msg = ""; return true;
+                }
+                ).Edit();
+
+            return;
+
             string[] mainMenu = new string[]
                 {
                     "Группы",

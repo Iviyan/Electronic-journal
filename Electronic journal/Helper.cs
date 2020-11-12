@@ -24,6 +24,11 @@ namespace Electronic_journal
             return res.ToArray();
         }
 
+        /*static PropertyInfo InfoOf<T>(Expression<Func<T>> ex)
+        {
+            return (PropertyInfo)((MemberExpression)ex.Body).Member;
+        }*/
+
         public static string ArrayToStr<T>(T[] arr)
         {
             if (arr.Length == 0) return "[]";
