@@ -21,9 +21,9 @@ namespace Electronic_journal
             Properties = new List<(PropertyInfo, string, object)>();
             int ind = 0;
             Type lastType = null;
-            foreach (var property in typeof(T).GetProperties()) //<<<---
+            foreach (var property in typeof(T).GetProperties())
             {
-                if (property.DeclaringType != lastType)
+                if (property.DeclaringType != lastType) // Иначе в первую очередь идут свойства производного класса, а потом уже базовых
                 {
                     ind = 0;
                     lastType = property.DeclaringType;
@@ -33,7 +33,6 @@ namespace Electronic_journal
                                         .SingleOrDefault();
                 if (attribute == null)
                     continue;
-                //Helper.mb(property.Name, " _ ", attribute.DisplayValue);
 
                 Properties.Insert(ind++, (property, attribute.DisplayValue, property.GetValue(obj)));
             }

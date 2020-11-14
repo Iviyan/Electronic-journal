@@ -24,6 +24,11 @@ namespace Electronic_journal
             //Admin a = new Admin();
 
             //Reader.ReadLine_esc();
+
+            StringArrayEditor sa = new(new[] { "str", "str2", "..." }, "Title", 0);
+            sa.Edit();
+
+            Console.Read();
             Settings settings = new Settings();
 
             /*AB ab = new AB();

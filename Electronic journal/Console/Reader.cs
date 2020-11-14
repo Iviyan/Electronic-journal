@@ -6,17 +6,25 @@ namespace Electronic_journal
 {
     public static class Reader
     {
-        public delegate bool TestInputChar(char c);
-        public static bool IsInputChar(char c) => Char.IsLetterOrDigit(c) || Char.IsPunctuation(c) || Char.IsWhiteSpace(c) || Char.IsSymbol(c);
+        public enum ReadLineCallbackResult
+        {
+            Continue,
+            Enter,
+            Escape
+        }
+        public delegate ReadLineCallbackResult ReadLineCallback(ConsoleKeyInfo key);
+        public static bool IsInputChar(char c) => Char.IsLetterOrDigit(c) || Char.IsPunctuation(c) || Char.IsWhiteSpace(c);// || Char.IsSymbol(c);
 
-        public static string ReadLine_esc(string input = "", bool newLine = true)
+        public static string ReadLine_esc(string input = "", bool newLine = true, ReadLineCallback callback = null)
         {
             string v = input;
-            ReadLine_esc(ref v, input, newLine);
+            ReadLine_esc(ref v, input, newLine, callback);
             return v;
         }
 
-        public static bool ReadLine_esc(ref string value, string input = "", bool newLine = true)
+        public static bool ReadLine_esc(ref string value, string input = "", bool newLine = true, ReadLineCallback callback = null) =>
+            ReadLine_esc_key(ref value, input, newLine, callback).Key == ConsoleKey.Enter;
+        public static ConsoleKeyInfo ReadLine_esc_key(ref string value, string input = "", bool newLine = true, ReadLineCallback callback = null)
         {
             int left = Console.CursorLeft,
                 pos = 0;
@@ -29,6 +37,9 @@ namespace Electronic_journal
                 pos = input.Length;
                 Console.Write(input);
             }
+
+            bool callbackExists = callback != null;
+            bool callbackEnter = false;
 
             ConsoleKeyInfo key = Console.ReadKey(true);
             while (key.Key != ConsoleKey.Enter && key.Key != ConsoleKey.Escape)
@@ -55,14 +66,20 @@ namespace Electronic_journal
                 {
                     Console.CursorLeft++; pos++;
                 }
+                else if (callbackExists)
+                {
+                    ReadLineCallbackResult res = callback(key);
+                    if (res == ReadLineCallbackResult.Enter) { callbackEnter = true; break; }
+                    if (res == ReadLineCallbackResult.Escape) break;
+                }
                 key = Console.ReadKey(true);
             }
 
-            if (key.Key == ConsoleKey.Enter)
+            if (key.Key == ConsoleKey.Enter || callbackEnter)
             {
                 if (newLine) Console.WriteLine();
                 value = buffer.ToString();
-                return true;
+                return key;
             }
             if (input != buffer.ToString())
             {
@@ -73,7 +90,7 @@ namespace Electronic_journal
                 Console.CursorLeft = left + input.Length;
             }
 
-            return false;
+            return key;
         }
     }
 }

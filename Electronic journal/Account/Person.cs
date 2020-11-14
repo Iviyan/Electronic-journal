@@ -13,8 +13,7 @@ namespace Electronic_journal
         public string LastName { get; set; }
         [Editor("Отчество")]
         public string Patronymic { get; set; }
-        [Editor("Дата рождения")]
-        [DateTimeMode(OnlyDate = true)]
+        [Editor("Дата рождения"), DateTimeMode(OnlyDate = true)]
         public DateTime Birthday { get; set; }
         public Person(string login, string password, AccountType type, string firstName, string lastName, string patronymic, DateTime birthday) : base(login, password, type)
         {
