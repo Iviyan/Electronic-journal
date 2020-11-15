@@ -9,8 +9,24 @@ namespace Electronic_journal
     public class ClassEditor<T>
     {
         public readonly T Obj;
-        public List<(PropertyInfo property, string name, object initialValue)> Properties;
+        public (PropertyInfo property, string name, object initialValue)[] Properties;
         ValidateFunc Validate;
+
+        public int StartY;
+        int selectedIndex = 0;
+        int SelectedIndex
+        {
+            get => selectedIndex;
+            set
+            {
+                Select(selectedIndex, ' ');
+                selectedIndex = value;
+                Select(selectedIndex);
+                SetCursorPosition();
+            }
+        }
+
+        int[] ValuesLength;
 
         public delegate bool ValidateFunc(T obj, out string msg);
         public ClassEditor(T obj, ValidateFunc validate)
@@ -18,7 +34,7 @@ namespace Electronic_journal
             Obj = obj;
             Validate = validate;
 
-            Properties = new List<(PropertyInfo, string, object)>();
+            var properties = new List<(PropertyInfo, string, object)>();
             int ind = 0;
             Type lastType = null;
             foreach (var property in typeof(T).GetProperties())
@@ -34,9 +50,10 @@ namespace Electronic_journal
                 if (attribute == null)
                     continue;
 
-                Properties.Insert(ind++, (property, attribute.DisplayValue, property.GetValue(obj)));
+                properties.Insert(ind++, (property, attribute.DisplayValue, property.GetValue(obj)));
             }
-
+            Properties = properties.ToArray();
+            ValuesLength = new int[properties.Count];
         }
 
         string GetStringValueFromDateTime(PropertyInfo dateTimeProperty)
@@ -56,136 +73,190 @@ namespace Electronic_journal
 
             return dateTime.ToString();
         }
+        string GetStringValueFromStringArray(string[] stringArray) => Helper.ArrayToStr(stringArray);
         string GetStringValue(PropertyInfo property)
         {
             var value = property.GetValue(Obj);
 
             switch (value)
             {
-                case DateTime val: return GetStringValueFromDateTime(property);
+                case DateTime: return GetStringValueFromDateTime(property);
+                case string[] val: return GetStringValueFromStringArray(val);
             }
 
             return value.ToString();
         }
 
+        void WriteValue(string val, int maxLength)
+        {
+            if (val.Length > maxLength)
+            {
+                Console.Write(val.Substring(0, maxLength - 3));
+                using (new UseConsoleColor(ConsoleColor.Red))
+                    Console.Write("...");
+            }
+            else
+                Console.Write(val);
+
+        }
+
+        void Write()
+        {
+            for (int i = 0; i < Properties.Length; i++)
+            {
+                var p = Properties[i];
+                Console.Write($"  {p.name}: ");
+                int valueMaxLength = Console.WindowWidth - (p.name.Length + 4);
+                string value = GetStringValue(p.property);
+                ValuesLength[i] = value.Length;
+                WriteValue(value, valueMaxLength);
+                Console.CursorLeft = 0;
+                Console.CursorTop++;
+            }
+            Console.WriteLine("  Сохранить");
+        }
+
+        void Select(int index, char c = '>')
+        {
+            Console.SetCursorPosition(0, StartY + index);
+            Console.Write(c);
+        }
+        void SetCursorPosition()
+        {
+            if (SelectedIndex < Properties.Length) {
+                int pos = Properties[SelectedIndex].name.Length + 4 + GetStringValue(Properties[SelectedIndex].property).Length;
+                if (pos < Console.WindowWidth)
+                    Console.CursorLeft = pos;
+                else
+                    Console.CursorLeft = Console.WindowWidth - 1;
+            }
+            else
+                Console.CursorLeft = 0;
+        }
+
+        int errorMsgHeight = 0;
+        void ClearError() => ConsoleHelper.ClearArea(1, StartY + Properties.Length + 1, Console.WindowWidth - 1, StartY + Properties.Length + 1 + errorMsgHeight);
+        void writeError(string msg)
+        {
+            ClearError();
+            using (new CursonPosition(1, StartY + Properties.Length + 1))
+                //using (new UseConsoleColor(ConsoleColor.Red))
+                Console.Write($"!> {msg}");
+            errorMsgHeight = (int)Math.Ceiling($"!> {msg}".Length / (double)Console.WindowWidth);
+        }
+
+        void EditProperty(bool backspace = false)
+        {
+            var p = Properties[selectedIndex];
+
+            void setCursorBeforeInput() => Console.CursorLeft = 2 + Properties[selectedIndex].name.Length + 2;
+            setCursorBeforeInput();
+
+            var value = p.property.GetValue(Obj);
+
+            void updateCurrentValue(string value)
+            {
+                setCursorBeforeInput();
+                int valueMaxLength = Console.WindowWidth - (p.name.Length + 4);
+                WriteValue(value, valueMaxLength);
+                if (value.Length < ValuesLength[SelectedIndex] && value.Length <= valueMaxLength)
+                    if (ValuesLength[SelectedIndex] < valueMaxLength)
+                        Console.Write(new string(' ', ValuesLength[SelectedIndex] - value.Length));
+                    else
+                        Console.Write(new string(' ', valueMaxLength - value.Length));
+
+                ValuesLength[SelectedIndex] = value.Length;
+            }
+
+            if (backspace)
+            {
+                updateCurrentValue("");
+                setCursorBeforeInput();
+            }
+
+            string input = "";
+            switch (value)
+            {
+                case int val:
+                    {
+
+                        string sval = val.ToString();
+                        if (Reader.ReadLine_esc(ref input, backspace ? "" : sval, false))
+                        {
+                            bool parse = int.TryParse(input, out int result);
+                            updateCurrentValue(parse ? result.ToString() : sval);
+                            if (parse)
+                                p.property.SetValue(Obj, result);
+                            else
+                                writeError("Ошибка ввода числа");
+                        }
+                    }
+                    break;
+                case string val:
+                    if (Reader.ReadLine_esc(ref input, backspace ? "" : val, false))
+                        p.property.SetValue(Obj, input);
+                    break;
+                case DateTime val:
+                    {
+                        var attribute = p.property.GetCustomAttributes<DateTimeModeAttribute>(true)
+                                .SingleOrDefault();
+                        string sval = GetStringValueFromDateTime(val, attribute);
+
+                        if (Reader.ReadLine_esc(ref input, backspace ? "" : sval, false))
+                        {
+                            bool parse = DateTime.TryParse(input, out DateTime result);
+                            updateCurrentValue(parse ? GetStringValueFromDateTime(result, attribute) : sval);
+                            if (parse)
+                                p.property.SetValue(Obj, result);
+                            else
+                                writeError("Ошибка ввода даты");
+                        }
+                    }
+                    break;
+                case string[] val:
+                    {
+                        
+                        ClearError();
+
+                        StringArrayEditor stringArrayEditor = new(val, $"{p.name}:", StartY + Properties.Length + 2);
+                        bool esc = stringArrayEditor.Edit(true);
+                        Console.CursorTop = StartY + SelectedIndex;
+                        if (esc) {
+                            p.property.SetValue(Obj, stringArrayEditor.GetArray());
+                            updateCurrentValue(GetStringValueFromStringArray(stringArrayEditor.GetArray()));
+                        }
+                        stringArrayEditor.Clear();
+                    }
+                    break;
+            }
+        }
+
+        bool Finish()
+        {
+            bool success = Validate(Obj, out string msg);
+            if (success)
+            {
+                ClearError();
+                Console.CursorTop = StartY + Properties.Length + 2;
+                return true;
+            }
+            else
+            {
+                writeError(msg);
+                return false;
+            }
+        }
+
         public void Edit()
         {
-            int selectInd = 0;
-            int top = Console.CursorTop;
-            int count = Properties.Count + 1;
-            Console.Write(Properties.Aggregate("", (acc, prop) => acc += $"  {prop.name}: {GetStringValue(prop.property)}\n") + "  Сохранить\n");
+            int count = Properties.Length + 1;
+
+            Write();
+
             ConsoleKeyInfo info;
-            
-            void setSel()
-            {
-                if (selectInd < count - 1)
-                    Console.CursorLeft = Properties[selectInd].name.Length + 4 + GetStringValue(Properties[selectInd].property).Length;
-                else
-                    Console.CursorLeft = 0;
-            }
-            void select(int ind)
-            {
-                Console.SetCursorPosition(0, top + selectInd);
-                Console.CursorLeft = 0;
-                Console.Write($" ");
-                Console.SetCursorPosition(0, top + ind);
-                Console.Write($">");
-                selectInd = ind;
-                setSel();
-            }
 
-            int errorMsgHeight = 0;
-            void clearError() => ConsoleHelper.ClearArea(1, top + count + 1, Console.WindowWidth - 1, top + count + 1 + errorMsgHeight);
-            void writeError(string msg)
-            {
-                clearError();
-                using (new CursonPosition(1, top + count + 1))
-                    //using (new UseConsoleColor(ConsoleColor.Red))
-                    Console.Write($"!> {msg}");
-                errorMsgHeight = (int)Math.Ceiling($"!> {msg}".Length / (double)Console.WindowWidth);
-            }
-            bool end()
-            {
-                bool success = Validate(Obj, out string msg);
-                if (success)
-                {
-                    clearError();
-                    Console.CursorTop = top + count + 1;
-                    return true;
-                }
-                else
-                {
-                    writeError(msg);
-                    return false;
-                }
-            }
-
-            select(0);
-
-            void edit(bool backspace = false)
-            {
-                var p = Properties[selectInd];
-
-                void setCursorBeforeInput() => Console.CursorLeft = 2 + Properties[selectInd].name.Length + 2;
-                setCursorBeforeInput();
-
-                var value = p.property.GetValue(Obj);
-
-                void updateCurrentValue(string value, int inputLength)
-                {
-                    setCursorBeforeInput();
-                    Console.Write(value);
-                    if (value.Length < inputLength)
-                        Console.Write(new string(' ', inputLength - value.Length));
-                }
-
-                if (backspace)
-                {
-                    updateCurrentValue("", value.ToString().Length);
-                    setCursorBeforeInput();
-                }
-
-                string input = "";
-                switch (value)
-                {
-                    case int val:
-                        {
-                            
-                            string sval = val.ToString();
-                            if (Reader.ReadLine_esc(ref input, backspace ? "" : sval, false))
-                            {
-                                bool parse = int.TryParse(input, out int result);
-                                updateCurrentValue(parse ? result.ToString() : sval, input.Length);
-                                if (parse)
-                                    p.property.SetValue(Obj, result);
-                                else
-                                    writeError("Ошибка ввода числа");
-                            }
-                        }
-                        break;
-                    case string val:
-                        if (Reader.ReadLine_esc(ref input, backspace ? "" : val, false))
-                            p.property.SetValue(Obj, input);
-                        break;
-                    case DateTime val:
-                        {
-                            var attribute = p.property.GetCustomAttributes<DateTimeModeAttribute>(true)
-                                    .SingleOrDefault();
-                            string sval = GetStringValueFromDateTime(val, attribute);
-
-                            if (Reader.ReadLine_esc(ref input, backspace ? "" : sval, false))
-                            {
-                                bool parse = DateTime.TryParse(input, out DateTime result);
-                                updateCurrentValue(parse ? GetStringValueFromDateTime(result, attribute) : sval, input.Length);
-                                if (parse)
-                                    p.property.SetValue(Obj, result);
-                                else
-                                    writeError("Ошибка ввода даты");
-                            }
-                        }
-                        break;
-                }
-            }
+            Select(0);
+            SetCursorPosition();
 
             while (true)
             {
@@ -194,33 +265,33 @@ namespace Electronic_journal
                 switch (info.Key)
                 {
                     case ConsoleKey.DownArrow:
-                        if (selectInd + 1 < count)
-                            select(selectInd + 1);
+                        if (SelectedIndex + 1 < count)
+                            SelectedIndex++;
                         else
-                            select(0);
+                            SelectedIndex = 0;
                         break;
 
                     case ConsoleKey.UpArrow:
-                        if (selectInd > 0)
-                            select(selectInd - 1);
+                        if (SelectedIndex > 0)
+                            SelectedIndex--;
                         else
-                            select(count - 1);
+                            SelectedIndex = count - 1;
                         break;
 
                     case ConsoleKey.Backspace:
-                        edit(true);
-                        select(selectInd);
+                        EditProperty(true);
+                        ////
                         break;
 
                     case ConsoleKey.Enter:
-                        if (selectInd == count - 1)
+                        if (SelectedIndex == count - 1)
                         {
-                            if (end()) return;
+                            if (Finish()) return;
                         }
                         else
                         {
-                            edit();
-                            select(selectInd);
+                            EditProperty();
+                            ////
                         }
                         break;
 
@@ -233,9 +304,6 @@ namespace Electronic_journal
                         }
                         return;
                 }
-
-                setSel();
-
             }
         }
     }

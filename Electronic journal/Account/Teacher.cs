@@ -7,7 +7,9 @@ namespace Electronic_journal
 {
     public class Teacher : Person, ICustomSerializable, IUI
     {
+        [Editor("Дисциплины")]
         public string[] Subjects { get; set; }
+        [Editor("Группы")]
         public string[] Groups { get; set; }
 
         public Teacher(string login, string password, string firstName, string lastName, string patronymic, DateTime birthday, string[] subjects, string[] groups)

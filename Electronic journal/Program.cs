@@ -25,10 +25,11 @@ namespace Electronic_journal
 
             //Reader.ReadLine_esc();
 
-            StringArrayEditor sa = new(new[] { "str", "str2", "..." }, "Title", 0);
+            /*StringArrayEditor sa = new(new string[] { "123456789", "987654321", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", }, "Title", 4);
             sa.Edit();
+            Helper.mb(Helper.ArrayToStr(sa.GetArray().Select(s => $"|{s}|").ToArray()));*/
 
-            Console.Read();
+            
             Settings settings = new Settings();
 
             /*AB ab = new AB();
@@ -46,9 +47,9 @@ namespace Electronic_journal
                 ).Edit();
             Helper.mb(ab.a, " ", ab.b, " ", ab.d);
             Console.Read();*/
-            var st = new Student("", "", "", "", "", DateTime.Today, "");
-            new ClassEditor<Student>(st,
-                (Student ab_, out string msg) =>
+            var t = new Teacher("", "", "", "", "", DateTime.Today, Array.Empty<string>(), new string[] { "123456789","987654321", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", });
+            new ClassEditor<Teacher>(t,
+                (Teacher ab_, out string msg) =>
                 {
                     msg = ""; return true;
                 }

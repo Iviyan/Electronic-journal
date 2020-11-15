@@ -13,6 +13,8 @@ namespace Electronic_journal
         public int StartY;
         int FirstIndexY;
 
+        public string[] GetArray() => Array.ToArray();
+
         private int selectedIndex;
         int SelectedIndex
         {
@@ -77,19 +79,23 @@ namespace Electronic_journal
         public void Clear()
         {
             Console.CursorLeft = 0;
-            ConsoleHelper.ClearArea(0, StartY, Console.WindowWidth, Array.Count + 1);
+            ConsoleHelper.ClearArea(0, StartY, Console.WindowWidth, StartY + (Array.Count > 0 ? Array.Count + 1 : 2));
         }
         void Clear(int startIndex)
         {
             Console.CursorLeft = 0;
-            ConsoleHelper.ClearArea(0, FirstIndexY + startIndex, Console.WindowWidth, Array.Count + 1);
+            ConsoleHelper.ClearArea(0, FirstIndexY + startIndex, Console.WindowWidth, FirstIndexY + Array.Count + 1);
         }
 
-        public string[] Edit()
+        public bool Edit(bool allowEscape = false)
         {
+            string[] initArr = null;
+            if (allowEscape) initArr = GetArray();
+
             int yPos = StartY;
             if (Title != null)
             {
+                Console.SetCursorPosition(0, StartY);
                 Console.WriteLine(Title);
                 yPos++;
             }
@@ -202,7 +208,27 @@ namespace Electronic_journal
                         ChoicesCount = Array.Count + 1;
                         break;
                     case ConsoleKey.Enter when SelectedIndex == ChoicesCount - 1:
-                        return Array.ToArray();
+                        return true;
+                    case ConsoleKey.Escape when allowEscape:
+                        Array = initArr.ToList();
+                        Clear(0);
+                        Write();
+                        return false;
+                    case ConsoleKey.Backspace when Array.Count > 0:
+                        {
+                            string str = Array[SelectedIndex];
+                            Console.CursorLeft--; Console.Write(' ');
+                            Console.CursorLeft = NumberLength(SelectedIndex) + 2;
+                            ConsoleKeyInfo key = Reader.ReadLine_esc_key(ref str, str.Substring(0, str.Length - 1), false, ReadLineCallback);
+                            bool esc = ReadLineResult(key);
+                            if (esc == false)
+                                Console.Write(str[str.Length - 1]);
+                            else
+                                Array[SelectedIndex] = str;
+
+                            NextAction(key);
+                        }
+                        break;
 
                     default:
                         
@@ -217,7 +243,7 @@ namespace Electronic_journal
                                 if (esc == false)
                                 {
                                     Console.CursorLeft = NumberLength(SelectedIndex) + 2 + Array[SelectedIndex].Length;
-                                    Console.Write(" ");
+                                    Console.Write(' ');
                                     Console.CursorLeft--;
                                 }
                                 else
