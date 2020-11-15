@@ -17,11 +17,15 @@ namespace Electronic_journal
     }
     
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-    public class DateTimeModeAttribute : Attribute
+    public class DateTimeParamsAttribute : Attribute
     {
-        public DateTimeModeAttribute()
-        {
-        }
+        public DateTimeParamsAttribute() { }
         public bool OnlyDate { get; set; }
+    }
+    [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+    public class StringParamsAttribute : Attribute
+    {
+        public StringParamsAttribute() { }
+        public bool AllowEmpty { get; set; }
     }
 }

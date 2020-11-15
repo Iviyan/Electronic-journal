@@ -47,7 +47,7 @@ namespace Electronic_journal
                 ).Edit();
             Helper.mb(ab.a, " ", ab.b, " ", ab.d);
             Console.Read();*/
-            var t = new Teacher("", "", "", "", "", DateTime.Today, Array.Empty<string>(), new string[] { "123456789","987654321", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", });
+            /*var t = new Teacher("", "", "", "", "", DateTime.Today, Array.Empty<string>(), new string[] { "123456789","987654321", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", });
             new ClassEditor<Teacher>(t,
                 (Teacher ab_, out string msg) =>
                 {
@@ -55,7 +55,7 @@ namespace Electronic_journal
                 }
                 ).Edit();
 
-            return;
+            return;*/
 
             string[] mainMenu = new string[]
                 {
@@ -67,6 +67,8 @@ namespace Electronic_journal
                 };
             string[] groupsMenu;
             string[] accountsMenu;
+
+            Dictionary<string, int> accountsTable;
 
             ConsoleSelect menu = new ConsoleSelect(
                 mainMenu
@@ -88,25 +90,44 @@ namespace Electronic_journal
             }
             void ShowAccountsMenu()
             {
-                accountsMenu = settings.GetAccountsList().Keys.ToArray();
+                accountsTable = settings.GetAccountsList();
+                accountsMenu = accountsTable.Keys.ToArray();
                 menu.Update(accountsMenu);
                 int sel = menu.Choice(
                     (ConsoleKeyInfo key, int selectedIndex) =>
                     {
-                        if (key.Key == ConsoleKey.Escape)
-                        {
-                            ShowMainMenu(from: 1);
-                        };
-                        return false;
+                        if (key.Key == ConsoleKey.Escape) return -1;
+                        return null;
                     }
                 );
-
+                if (sel == -1) ShowMainMenu(from: 1);
+                int pos = accountsTable[accountsMenu[sel]];
+                ShowAccountEditMenu(pos);
             }
             void ShowAccountEditMenu(int posInFile)
             {
+                //Helper.mb(posInFile);
                 Account account = settings.LoadAccount(posInFile);
                 menu.Clear();
 
+                MemoryStream stream = new MemoryStream();
+                BinaryWriter writer = new BinaryWriter(stream);
+                
+                switch (account.Type)
+                {
+                    case Account.AccountType.Admin:
+                        ClassEditor<Admin> editor = new ClassEditor<Admin>(
+                            (Admin)account,
+                            (Admin admin, out string msg) =>
+                            {
+                                msg = ""; return true;
+                            }
+                        );
+                        editor.Edit();
+                        account.Export(writer);
+                        break;
+                }
+                Helper.mb(Helper.ArrayToStr(stream.ToArray()));
             }
             ShowMainMenu(false);
             return;

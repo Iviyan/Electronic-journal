@@ -327,6 +327,7 @@ namespace Electronic_journal
         public void Clear()
         {
             ConsoleHelper.ClearArea(StartX, StartY, StartX + CurrentMaxWidth + 1, StartY + CurrentHeight);
+            Console.CursorLeft = 0;
         }
         public void Clear(int startIndex, int endIndex)
         {
@@ -402,8 +403,8 @@ namespace Electronic_journal
         /// </summary>
         /// <param name="key"></param>
         /// <param name="selectedIndex"></param>
-        /// <returns>True -> abort the selection</returns>
-        public delegate bool PressKey(ConsoleKeyInfo key, int selectedIndex);
+        /// <returns>null -> continue, int -> return int</returns>
+        public delegate int? PressKey(ConsoleKeyInfo key, int selectedIndex);
         public int Choice(PressKey onPressKey) => Choice(0, onPressKey);
         public int Choice(int selectIndex = 0, PressKey onPressKey = null)
         {
@@ -441,7 +442,11 @@ namespace Electronic_journal
                         if (!disabled.Contains(SelectedIndex)) return SelectedIndex;
                         break;
                     default:
-                        if (onPressKeyEventExists && onPressKey(info, selectedIndex)) return -1;
+                        if (onPressKeyEventExists)
+                        {
+                            int? r = onPressKey(info, selectedIndex);
+                            if (r != null) return (int)r;
+                        }
                         break;
                 }
             }

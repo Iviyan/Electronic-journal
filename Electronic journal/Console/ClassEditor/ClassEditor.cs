@@ -59,14 +59,14 @@ namespace Electronic_journal
         string GetStringValueFromDateTime(PropertyInfo dateTimeProperty)
         {
             DateTime value = (DateTime)dateTimeProperty.GetValue(Obj);
-            var dateTimeAttribute = dateTimeProperty.GetCustomAttributes<DateTimeModeAttribute>(true)
+            var dateTimeAttribute = dateTimeProperty.GetCustomAttributes<DateTimeParamsAttribute>(true)
                                     .SingleOrDefault();
             if (dateTimeAttribute != null)
                 return GetStringValueFromDateTime(value, dateTimeAttribute);
 
             return value.ToString();
         }
-        string GetStringValueFromDateTime(DateTime dateTime, DateTimeModeAttribute attribute)
+        string GetStringValueFromDateTime(DateTime dateTime, DateTimeParamsAttribute attribute)
         {
             if (attribute.OnlyDate)
                 return dateTime.ToString("d");
@@ -198,7 +198,7 @@ namespace Electronic_journal
                     break;
                 case DateTime val:
                     {
-                        var attribute = p.property.GetCustomAttributes<DateTimeModeAttribute>(true)
+                        var attribute = p.property.GetCustomAttributes<DateTimeParamsAttribute>(true)
                                 .SingleOrDefault();
                         string sval = GetStringValueFromDateTime(val, attribute);
 
@@ -231,9 +231,31 @@ namespace Electronic_journal
             }
         }
 
+        bool CheckFields(out string msg)
+        {
+            for (int i = 0; i < Properties.Length; i++)
+            {
+                var value = Properties[i].property.GetValue(Obj);
+                switch (value)
+                {
+                    case string val:
+                        var attribute = Properties[i].property.GetCustomAttributes<StringParamsAttribute>(true)
+                                .SingleOrDefault();
+                        if (attribute != null && attribute.AllowEmpty == false && val == "")
+                        {
+                            msg = $"Поле {i} - \"{Properties[i].name}\" не может быть пустым";
+                            return false;
+                        }
+                        break;
+                }
+            }
+            msg = "";
+            return true;
+        }
         bool Finish()
         {
-            bool success = Validate(Obj, out string msg);
+            string msg;
+            bool success = CheckFields(out msg) && Validate(Obj, out msg);
             if (success)
             {
                 ClearError();

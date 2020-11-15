@@ -101,13 +101,13 @@ namespace Electronic_journal
             {
                 while (reader.PeekChar() > -1)
                 {
-                    int pos = (int)reader.BaseStream.Position;
                     ushort len = reader.ReadUInt16();
+                    int pos = (int)reader.BaseStream.Position;
                     string login = reader.ReadString();
 
                     accounts.Add(login, pos);
 
-                    reader.BaseStream.Position = pos + len + 2;
+                    reader.BaseStream.Position = pos + len;
                 }
                 return accounts;
             }

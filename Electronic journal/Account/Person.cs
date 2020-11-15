@@ -7,13 +7,13 @@ namespace Electronic_journal
 {
     public abstract class Person : Account
     {
-        [Editor("Имя")]
+        [Editor("Имя"), StringParams(AllowEmpty = false)]
         public string FirstName { get; set; }
-        [Editor("Фамилия")]
+        [Editor("Фамилия"), StringParams(AllowEmpty = false)]
         public string LastName { get; set; }
-        [Editor("Отчество")]
+        [Editor("Отчество"), StringParams(AllowEmpty = false)]
         public string Patronymic { get; set; }
-        [Editor("Дата рождения"), DateTimeMode(OnlyDate = true)]
+        [Editor("Дата рождения"), DateTimeParams(OnlyDate = true)]
         public DateTime Birthday { get; set; }
         public Person(string login, string password, AccountType type, string firstName, string lastName, string patronymic, DateTime birthday) : base(login, password, type)
         {
