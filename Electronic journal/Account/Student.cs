@@ -11,28 +11,28 @@ namespace Electronic_journal
         public string Group { get; set; }
 
         public Student(string login, string password, string firstName, string lastName, string patronymic, DateTime birthday, string group)
-            : base(login, password, AccountType.Teacher, firstName, lastName, patronymic, birthday)
+            : base(login, password, AccountType.Student, firstName, lastName, patronymic, birthday)
         {
             Group = group;
         }
         public Student(string login, string password, BinaryReader reader)
-            : base(login, password, AccountType.Teacher, reader)
+            : base(login, password, AccountType.Student, reader)
         {
             Group = reader.ReadString();
         }
         public Student(BinaryReader reader)
-            : base(AccountType.Teacher, reader)
+            : base(AccountType.Student, reader)
         {
             Group = reader.ReadString();
         }
 
-        public new void Export(BinaryWriter writer)
+        public override void Export(BinaryWriter writer)
         {
             base.Export(writer);
             writer.Write(Group);
         }
 
-        public void UI()
+        public void UI(Settings settings)
         {
 
         }

@@ -31,14 +31,14 @@ namespace Electronic_journal
             Groups = reader.ReadStringArray();
         }
 
-        public new void Export(BinaryWriter writer)
+        public override void Export(BinaryWriter writer)
         {
             base.Export(writer);
             writer.Write(Subjects);
             writer.Write(Groups);
         }
 
-        public void UI()
+        public void UI(Settings settings)
         {
 
         }

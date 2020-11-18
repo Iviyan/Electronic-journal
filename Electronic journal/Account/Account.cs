@@ -15,8 +15,8 @@ namespace Electronic_journal
         public enum AccountType : byte
         {
             Admin = 1,
-            Teacher,
-            Student
+            Teacher = 2,
+            Student = 3
         }
         public AccountType Type { get; }
 
@@ -26,13 +26,17 @@ namespace Electronic_journal
             Password = password;
             Type = type;
         }
-        public Account(BinaryReader reader, AccountType type) : this(reader.ReadString(), reader.ReadString(), type) { reader.BaseStream.Position++; }
+        public Account(BinaryReader reader, AccountType type)
+        {
+            Login = reader.ReadString();
+            Password = reader.ReadString();
+        }
 
         public virtual void Export(BinaryWriter writer)
         {
+            writer.Write((byte)Type);
             writer.Write(Login);
             writer.Write(Password);
-            writer.Write((byte)Type);
         }
     }
 }

@@ -10,7 +10,7 @@ namespace Electronic_journal
         public string FolderName { get; }
         public string FileName { get; }
 
-        public readonly string FilePatch;
+        public string FilePatch { get; }
 
         public bool Exists => File.Exists(FilePatch);
 

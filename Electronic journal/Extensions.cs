@@ -17,6 +17,27 @@ namespace Electronic_journal
             return v;
         }*/
 
+        public static bool Contains(this string[] array, string value)
+        {
+            if (array == null) return false;
+
+            for (int i = 0; i < array.Length; i++)
+                if (array[i] == value)
+                    return true;
+
+            return false;
+        }
+        public static bool ChangeKey<TKey, TValue>(this IDictionary<TKey, TValue> dict,
+                                           TKey oldKey, TKey newKey)
+        {
+            TValue value;
+            if (!dict.Remove(oldKey, out value))
+                return false;
+
+            dict[newKey] = value;
+            return true;
+        }
+
         public static int Read7BitEncodedInt(this System.IO.BinaryReader reader)
         {
             uint result = 0;
@@ -61,7 +82,7 @@ namespace Electronic_journal
             for (int i = 0; i < length; i++) result[i] = reader.ReadString();
             return result;
         }
-        //public static void SkipString(this BinaryReader reader) => reader.BaseStream.Position += reader.Read7BitEncodedInt();
+        public static void SkipString(this BinaryReader reader) => reader.BaseStream.Position += reader.Read7BitEncodedInt();
 
         public static void Write(this BinaryWriter writer, DateTime date) => writer.Write(date.ToBinary());
         public static DateTime ReadDateTime(this BinaryReader reader) => DateTime.FromBinary(reader.ReadInt64());

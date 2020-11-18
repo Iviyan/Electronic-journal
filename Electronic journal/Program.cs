@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -21,7 +22,11 @@ namespace Electronic_journal
         }*/
         static void Main(string[] args)
         {
-            //Admin a = new Admin();
+            Admin ad = new Admin("admin", "admin");
+
+            
+
+            //Group gr = new Group("P50");
 
             //Reader.ReadLine_esc();
 
@@ -31,7 +36,19 @@ namespace Electronic_journal
 
             
             Settings settings = new Settings();
+            //settings.RemoveAccount("Ivan_V");
+             /*Student st = new Student("Ivan_V", "12345", "Иван", "Воркунов", "Викторович", DateTime.Today, "П50-1-19");
+             var w = settings.GetAccountFileWriter("IV", FileMode.Create);
+             st.Export(w);
+             w.Dispose();
+            var r = settings.GetAccountFileReader("Ivan_V");
+            r.ReadByte();
+            Student st1 = new Student(r);
+            Helper.mb(st1.Group);*/
 
+
+            ad.UI(settings);
+            Console.Read();
             /*AB ab = new AB();
             ab.a = 123;
             new ClassEditor<AB>(ab,
@@ -57,79 +74,7 @@ namespace Electronic_journal
 
             return;*/
 
-            string[] mainMenu = new string[]
-                {
-                    "Группы",
-                    "Аккаунты",
-                    "Добавить аккаунт",
-                    "Добавить группу",
-                    "Сменить пароль"
-                };
-            string[] groupsMenu;
-            string[] accountsMenu;
-
-            Dictionary<string, int> accountsTable;
-
-            ConsoleSelect menu = new ConsoleSelect(
-                mainMenu
-            );
-            void ShowMainMenu(bool updateMenu = true, int from = 0)
-            {
-                if (updateMenu) menu.Update(mainMenu);
-                switch (menu.Choice(from))
-                {
-                    case 0:
-                        break;
-                    case 1:
-                        ShowAccountsMenu();
-                        break;
-                    case 2:
-                        ShowAccountsMenu();
-                        break;
-                }
-            }
-            void ShowAccountsMenu()
-            {
-                accountsTable = settings.GetAccountsList();
-                accountsMenu = accountsTable.Keys.ToArray();
-                menu.Update(accountsMenu);
-                int sel = menu.Choice(
-                    (ConsoleKeyInfo key, int selectedIndex) =>
-                    {
-                        if (key.Key == ConsoleKey.Escape) return -1;
-                        return null;
-                    }
-                );
-                if (sel == -1) ShowMainMenu(from: 1);
-                int pos = accountsTable[accountsMenu[sel]];
-                ShowAccountEditMenu(pos);
-            }
-            void ShowAccountEditMenu(int posInFile)
-            {
-                //Helper.mb(posInFile);
-                Account account = settings.LoadAccount(posInFile);
-                menu.Clear();
-
-                MemoryStream stream = new MemoryStream();
-                BinaryWriter writer = new BinaryWriter(stream);
-                
-                switch (account.Type)
-                {
-                    case Account.AccountType.Admin:
-                        ClassEditor<Admin> editor = new ClassEditor<Admin>(
-                            (Admin)account,
-                            (Admin admin, out string msg) =>
-                            {
-                                msg = ""; return true;
-                            }
-                        );
-                        editor.Edit();
-                        account.Export(writer);
-                        break;
-                }
-                Helper.mb(Helper.ArrayToStr(stream.ToArray()));
-            }
-            ShowMainMenu(false);
+            
             return;
             //Console.WriteLine((int)Math.Ceiling("1234567".Length / (double)3));
 
@@ -141,13 +86,14 @@ namespace Electronic_journal
             Console.Write("Пароль: ");
             string pass = Console.ReadLine();
 
-            Account a = settings.TryLogin(login, pass);
+            // TODO: Сделать цикл
+            Account a = settings.TryLogin(login, pass, out string errorMsg);
             Console.WriteLine(a.Type);
 
             Console.ReadKey();
             Console.Clear();
 
-            ((IUI)a).UI();
+            ((IUI)a).UI(settings);
             /*switch (a.Type)
             {
                 case Account.AccountType.Admin: 

@@ -2,15 +2,23 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using static Electronic_journal.Account;
 
 namespace Electronic_journal
 {
     public class Settings
     {
         public string FolderName { get; }
+        public string AccountsFolderName { get; }
+        public string GetAccountFilePatch(string login) => @$"{AccountsFolderName}\{login}.dat";
         public string GroupsFolderName { get; }
-        public SettingsFile AccountsSettingsFile { get; }
-        public SettingsFile GroupsSettingsFile { get; }
+        public string GetGroupFolderPatch(string groupName) => $@"{GroupsFolderName}\{groupName}";
+        public string GetGroupInfoFilePatch(string groupName) => $@"{GetGroupFolderPatch(groupName)}\info.dat";
+        public string GetGroupJournalFilePatch(string groupName) => $@"{GetGroupFolderPatch(groupName)}\journal.dat";
+        public SettingsFile AccountsListFile { get; }
+        public SettingsFile GroupsListFile { get; }
+        public BinaryReader GetAccountFileReader(string login, FileMode fileMode = FileMode.Open) => new BinaryReader(File.Open(@$"{AccountsFolderName}\{login}.dat", fileMode));
+        public BinaryWriter GetAccountFileWriter(string login, FileMode fileMode = FileMode.Truncate) => new BinaryWriter(File.Open(@$"{AccountsFolderName}\{login}.dat", fileMode));
 
         public const string DefaultAdminLogin = "admin";
         public const string DefaultAdminPassword = "admin";
@@ -20,108 +28,206 @@ namespace Electronic_journal
 
         public Settings(
             string folderName = "Electronic Journal",
+            string accountsFolderName = "Accounts",
             string groupsFolderName = "Groups",
             string accountsFileName = "Accounts.dat",
             string groupsFileName = "Groups.dat"
             )
         {
             FolderName = folderName;
+            AccountsFolderName = $@"{folderName}\{accountsFolderName}";
             GroupsFolderName = $@"{folderName}\{groupsFolderName}";
-            AccountsSettingsFile = new SettingsFile(accountsFileName, folderName);
-            GroupsSettingsFile = new SettingsFile(groupsFileName, folderName);
+            AccountsListFile = new SettingsFile(accountsFileName, folderName);
+            GroupsListFile = new SettingsFile(groupsFileName, folderName);
 
             if (!Directory.Exists(FolderName)) Directory.CreateDirectory(FolderName);
+            if (!Directory.Exists(AccountsFolderName)) Directory.CreateDirectory(AccountsFolderName);
             if (!Directory.Exists(GroupsFolderName)) Directory.CreateDirectory(GroupsFolderName);
 
-            if (!AccountsSettingsFile.Exists)
+            if (!AccountsListFile.Exists)
                 AddAccount(new Admin(DefaultAdminLogin, DefaultAdminPassword));
+            if (!GroupsListFile.Exists)
+                File.Create(GroupsListFile.FilePatch);
 
         }
 
         public void AddAccount(Account account)
         {
-            using (BinaryWriter writer = AccountsSettingsFile.GetFileWriter())
-            {
-                writer.BaseStream.Position += 2;
-                long startPosition = writer.BaseStream.Position;
+            using (BinaryWriter writer = AccountsListFile.GetFileWriter())
+                writer.Write(account.Login);
+            using (BinaryWriter writer = new BinaryWriter(File.Open(GetAccountFilePatch(account.Login), FileMode.Create)))
                 account.Export(writer);
-                long length = writer.BaseStream.Position - startPosition;
-                writer.BaseStream.Position = 0;
-                writer.Write((ushort)length);
-            }
+        }
+        public void RemoveAccount(string login)
+        {
+            List<string> accounts = new();
+            using (BinaryReader reader = AccountsListFile.GetFileReader())
+                while (reader.PeekChar() > -1)
+                    accounts.Add(reader.ReadString());
+            accounts.Remove(login);
+            using (BinaryWriter writer = AccountsListFile.GetFileWriter(FileMode.Truncate))
+                for (int i = 0; i < accounts.Count; i++)
+                    writer.Write(accounts[i]);
+
+            File.Delete(GetAccountFilePatch(login));
         }
 
-        public Account LoadAccount(int position)
+        public Account LoadAccount(string login)
         {
-            BinaryReader reader = AccountsSettingsFile.GetFileReader();
-            reader.BaseStream.Position = position;
-            return LoadAccount(reader);
+            using (BinaryReader reader = GetAccountFileReader(login))
+                return LoadAccount(reader);
         }
-        public Account LoadAccount(BinaryReader reader) => LoadAccount(reader, reader.ReadString(), reader.ReadString());
-        public Account LoadAccount(BinaryReader reader, string login, string pass)
+        public Account LoadAccount(BinaryReader reader) => LoadAccount(reader, reader.ReadByte(), reader.ReadString(), reader.ReadString());
+        public Account LoadAccount(BinaryReader reader, byte type_, string login, string pass)
         {
-            Account.AccountType type = (Account.AccountType)reader.ReadByte();
+            AccountType type = (AccountType)type_;
             switch (type)
             {
-                case Account.AccountType.Admin: return new Admin(login, pass);
-                case Account.AccountType.Teacher: return new Teacher(login, pass, reader);
-                case Account.AccountType.Student: return new Student(login, pass, reader);
+                case AccountType.Admin: return new Admin(login, pass);
+                case AccountType.Teacher: return new Teacher(login, pass, reader);
+                case AccountType.Student: return new Student(login, pass, reader);
             }
             throw new FormatException("Wrong account type");
         }
 
-        public Account TryLogin(string login, string password)
+        public Account TryLogin(string login, string password, out string errorMsg)
         {
-            using (BinaryReader reader = AccountsSettingsFile.GetFileReader())
-            {
+            bool accountExists = false;
+            using (BinaryReader reader = AccountsListFile.GetFileReader())
                 while (reader.PeekChar() > -1)
-                {
-                    ushort len = reader.ReadUInt16();
-                    long pos = reader.BaseStream.Position;
-                    if (login == reader.ReadString())
+                    if (reader.ReadString() == login)
                     {
-                        if (password == reader.ReadString())
-                            return LoadAccount(reader, login, password);
+                        accountExists = true;
+                        break;
                     }
-                    else
-                        reader.BaseStream.Position = pos + len;
-                }
+            if (!accountExists) {
+                errorMsg = "Аккаунта не существует";
                 return null;
             }
+
+            using (BinaryReader reader = GetAccountFileReader(login))
+            {
+                byte type = reader.ReadByte();
+                reader.SkipString();
+                if (reader.ReadString() != password)
+                {
+                    errorMsg = "Неверный пароль";
+                    return null;
+                }
+                errorMsg = String.Empty;
+                return LoadAccount(reader, type, login, password);
+            }
+
+        }
+        public string[] GetAccountsList()
+        {
+            List<string> accounts = new();
+            using (BinaryReader reader = AccountsListFile.GetFileReader())
+                while (reader.PeekChar() > -1)
+                    accounts.Add(reader.ReadString());
+            return accounts.ToArray();
+        }
+        public string[] GetGroupsList()
+        {
+            List<string> groups = new();
+            using (BinaryReader reader = GroupsListFile.GetFileReader())
+                while (reader.PeekChar() > -1)
+                    groups.Add(reader.ReadString());
+            return groups.ToArray();
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns>string - login, int - position</returns>
-        public Dictionary<string, int> GetAccountsList()
+        public void AddGroup(Group group)
         {
-            Dictionary<string, int> accounts = new Dictionary<string, int>();
-            using (BinaryReader reader = AccountsSettingsFile.GetFileReader())
-            {
+            using (BinaryWriter writer = GroupsListFile.GetFileWriter())
+                writer.Write(group.Name);
+            group.Export(this);
+        }
+
+        public void RemoveGroup(string groupName)
+        {
+            List<string> groups = new();
+            using (BinaryReader reader = GroupsListFile.GetFileReader())
                 while (reader.PeekChar() > -1)
-                {
-                    ushort len = reader.ReadUInt16();
-                    int pos = (int)reader.BaseStream.Position;
-                    string login = reader.ReadString();
+                    groups.Add(reader.ReadString());
+            groups.Remove(groupName);
 
-                    accounts.Add(login, pos);
+            using (BinaryWriter writer = GroupsListFile.GetFileWriter())
+                for (int i = 0; i < groups.Count; i++)
+                    writer.Write(groups[i]);
 
-                    reader.BaseStream.Position = pos + len;
-                }
-                return accounts;
-            }
+            Directory.Delete(GetGroupFolderPatch(groupName));
         }
     }
 }
 /* Структура файлов:
- * Accounts.dat 
- * [
- *   length : ushort   --! размер данных аккаунта не должен превышать 65535 байт
+ * 
+ * Accounts.dat = [login,]
+ * Groups.dat = [GroupName,]
+ * 
+ * Accounts\<Account login>.dat
+ * {
+ *   тип учётной записи : (AccountType : byte),
  *   login : string,
  *   pass : string,
- *   тип учётной записи : (AccountType : byte),
  *   ... (параметры)
+ * }
+ * 
+ * Groups\<Group name>\info.dat
+ * {
+ *   Number of disciplines : byte,
+ *   [ discipline : string, ],
+ *   
+ *   Number of teachers : byte,
+ *   [
+ *     Teacher's login : string,
+ *     Number of disciplines : byte,
+ *     [ disciplineID  : byte, ]
+ *   ]
+ *   
+ *   Number of students : byte,
+ *   [ Student's login : string, ]
+ * }
+ * 
+ * Groups\<Group name>\journal.dat
+ * [                      // index ~ id of student
+ *   [                    // index ~ id of discipline
+ *     number of marks : byte,
+ *     [
+ *       mark : byte,
+ *       date : (DateTime : long)
+ *     ]
+ *   ]
  * ]
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * Groups\<Group name>.dat
+ * {
+ *   Number of disciplines : byte,
+ *   [ discipline : string, ],
+ *   
+ *   Number of teachers : byte,
+ *   [
+ *     Teacher's login : string,
+ *     Number of disciplines : byte,
+ *     [ disciplineID  : byte, ]
+ *   ],
+ * 
+ *   [
+ *     Student's login : stirng, 
+ *     [                            // index ~ id of discipline
+ *       number of marks : byte,
+ *       [
+ *         mark : byte,
+ *         date : (DateTime : long)
+ *       ]
+ *     ]
+ *   ]
+ * }
  * 
  */

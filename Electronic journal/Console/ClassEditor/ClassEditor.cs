@@ -28,7 +28,8 @@ namespace Electronic_journal
 
         int[] ValuesLength;
 
-        public delegate bool ValidateFunc(T obj, out string msg);
+        //public delegate bool ValidateFunc(T obj, out string msg);
+        public delegate bool ValidateFunc(T obj, string[] changedProperties, out string msg);
         public ClassEditor(T obj, ValidateFunc validate)
         {
             Obj = obj;
@@ -135,7 +136,11 @@ namespace Electronic_journal
         }
 
         int errorMsgHeight = 0;
-        void ClearError() => ConsoleHelper.ClearArea(1, StartY + Properties.Length + 1, Console.WindowWidth - 1, StartY + Properties.Length + 1 + errorMsgHeight);
+        void ClearError()
+        {
+            ConsoleHelper.ClearArea(1, StartY + Properties.Length + 1, Console.WindowWidth - 1, StartY + Properties.Length + 1 + errorMsgHeight);
+            errorMsgHeight = 0;
+        }
         void writeError(string msg)
         {
             ClearError();
@@ -255,7 +260,11 @@ namespace Electronic_journal
         bool Finish()
         {
             string msg;
-            bool success = CheckFields(out msg) && Validate(Obj, out msg);
+            List<string> changedProperties = new();
+            foreach (var p in Properties)
+                if (!p.property.GetValue(Obj).Equals(p.initialValue))
+                    changedProperties.Add(p.property.Name);
+            bool success = CheckFields(out msg) && Validate(Obj, changedProperties.ToArray(), out msg);
             if (success)
             {
                 ClearError();
@@ -269,7 +278,14 @@ namespace Electronic_journal
             }
         }
 
-        public void Edit()
+        public void Clear()
+        {
+            ClearError();
+            ConsoleHelper.ClearArea(0, StartY, Console.WindowWidth - 1, StartY + Properties.Length + 1);
+            Console.SetCursorPosition(0, StartY);
+        }
+
+        public bool Edit()
         {
             int count = Properties.Length + 1;
 
@@ -308,7 +324,7 @@ namespace Electronic_journal
                     case ConsoleKey.Enter:
                         if (SelectedIndex == count - 1)
                         {
-                            if (Finish()) return;
+                            if (Finish()) return true;
                         }
                         else
                         {
@@ -320,11 +336,10 @@ namespace Electronic_journal
                     case ConsoleKey.Escape:
                         foreach (var p in Properties)
                         {
-                            Helper.mb(p.property.GetValue(Obj), " == ", p.initialValue, " => ", p.property.GetValue(Obj).Equals(p.initialValue));
                             if (!p.property.GetValue(Obj).Equals(p.initialValue))
                                 p.property.SetValue(Obj, p.initialValue);
                         }
-                        return;
+                        return false;
                 }
             }
         }

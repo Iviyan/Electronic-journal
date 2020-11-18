@@ -157,6 +157,26 @@ namespace Electronic_journal
                 case NotifyCollectionChangedAction.Replace:
                     Edit(e.NewStartingIndex, e.NewItems[0] as string);
                     break;
+                case NotifyCollectionChangedAction.Remove:
+                    //Helper.mb(Helper.ArrayToStr(Pages), '\n', Helper.ArrayToStr(selHelper), '\n', e.OldStartingIndex);
+                    int startIndex = e.OldStartingIndex - (e.OldStartingIndex == Choices.Count ? 1 : 0);
+                    if (GetPageIndex(e.OldStartingIndex) == Page)
+                    {
+                        Clear(e.OldStartingIndex, Pages[Page].end);
+                        CalculatePages(startIndex);
+                        CalculateCurrentPage(startIndex);
+                        Write(e.OldStartingIndex);
+                        if (e.OldStartingIndex == Choices.Count) {
+                            selectedIndex--;
+                            select(SelectedIndex);
+                        } else
+                            select(SelectedIndex);
+                    } else
+                    {
+                        CalculatePages(startIndex);
+                    }
+                    
+                    break;
             }
         }
 
@@ -327,13 +347,13 @@ namespace Electronic_journal
         public void Clear()
         {
             ConsoleHelper.ClearArea(StartX, StartY, StartX + CurrentMaxWidth + 1, StartY + CurrentHeight);
-            Console.CursorLeft = 0;
+            Console.SetCursorPosition(0, StartY);
         }
         public void Clear(int startIndex, int endIndex)
         {
             var sh1 = selHelper[startIndex];
             var sh2 = selHelper[endIndex];
-            ConsoleHelper.ClearArea(StartX, StartY + sh1.top, StartX + CurrentMaxWidth + 1, StartY + sh2.top + sh2.height - 1);
+            ConsoleHelper.ClearArea(StartX, StartY + sh1.top, StartX + CurrentMaxWidth + 1, StartY + sh2.top + sh2.height);
         }
 
         public void Edit(int index, string newText)
@@ -366,7 +386,11 @@ namespace Electronic_journal
             if (SelectedIndex == index) select(index);
         }
 
-
+        /*public void Remove(int index)
+        {
+            if (PageCount == 1) CalculateCurrentPage(index);
+            else CalculatePages(index);
+        }*/
 
         public void select(int sel, char cStart = '>', char cEnd = '<')
         {
@@ -408,13 +432,12 @@ namespace Electronic_journal
         public int Choice(PressKey onPressKey) => Choice(0, onPressKey);
         public int Choice(int selectIndex = 0, PressKey onPressKey = null)
         {
-            int count = Choices.Count;
-            if (count == 0) { Console.ReadKey(true); return -1; }//throw new Exception("The list of choices is empty");
+            if (Choices.Count == 0) { Console.ReadKey(true); return -1; }//throw new Exception("The list of choices is empty");
 
             SelectedIndex = selectIndex;
             bool onPressKeyEventExists = onPressKey != null;
 
-            if (count == 0) throw new Exception("Count of choices must be >0");
+            if (Choices.Count == 0) throw new Exception("Count of choices must be >0");
 
             ConsoleKeyInfo info;
             while (true)
@@ -423,12 +446,12 @@ namespace Electronic_journal
                 switch (info.Key)
                 {
                     case ConsoleKey.DownArrow:
-                        if (SelectedIndex + 1 < count) SelectedIndex++;
+                        if (SelectedIndex + 1 < Choices.Count) SelectedIndex++;
                         else SelectedIndex = 0;
                         break;
                     case ConsoleKey.UpArrow:
                         if (SelectedIndex > 0) SelectedIndex--;
-                        else SelectedIndex = count - 1;
+                        else SelectedIndex = Choices.Count - 1;
                         break;
                     case ConsoleKey.RightArrow:
                         if (Page + 1 < PageCount) Page++;
