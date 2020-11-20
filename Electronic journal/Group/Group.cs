@@ -11,7 +11,7 @@ namespace Electronic_journal
 {
     public class Group
     {
-        [Editor("Имя")]
+        [Editor("Имя"), StringParams(AllowEmpty = false)]
         public string Name { get; set; }
         [Editor("Дисциплины")]
         public ObservableCollection<string> Disciplines { get; set; }
@@ -24,9 +24,9 @@ namespace Electronic_journal
         /// key - teacherID<br/>
         /// value - disciplineID[]
         /// </summary>
-        public Dictionary<byte, byte[]> Teacher_disciplines;
+        public Dictionary<byte, List<byte>> Teacher_disciplines;
 
-        public List<List<(byte mark, DateTime date)[]>> Marks;
+        public List<List<List<(byte mark, DateTime date)>>> Marks;
 
         public Group(string groupName)
         {
@@ -37,11 +37,20 @@ namespace Electronic_journal
             Teacher_disciplines = new();
             Students = new();
             Marks = new();
+
+            Students.CollectionChanged += Students_CollectionChanged;
+            Disciplines.CollectionChanged += Disciplines_CollectionChanged;
+            Teachers.CollectionChanged += Teachers_CollectionChanged;
         }
         public Group(Settings settings, string groupName) : this(groupName, settings.GetGroupInfoFilePatch(groupName), settings.GetGroupJournalFilePatch(groupName)) { }
-        public Group(string groupName, string groupFile_info, string groupFile_journal) : this(groupName)
+        public Group(string groupName, string groupFile_info, string groupFile_journal)
         {
             if (Name == null) Name = groupName;
+            Disciplines = new();
+            Teachers = new();
+            Teacher_disciplines = new();
+            Students = new();
+            Marks = new();
 
             using (BinaryReader reader = new BinaryReader(File.Open(groupFile_info, FileMode.Open)))
             {
@@ -54,10 +63,10 @@ namespace Electronic_journal
                 {
                     Teachers.Add(reader.ReadString());
                     byte teacherDisciplinesCount = reader.ReadByte();
-                    List<byte> teacherDisciplines = new();
+                    List<byte> teacherDisciplines = new(teacherDisciplinesCount);
                     for (byte j = 0; j < teacherDisciplinesCount; j++)
                         teacherDisciplines.Add(reader.ReadByte());
-                    Teacher_disciplines.Add(i, teacherDisciplines.ToArray());
+                    Teacher_disciplines.Add(i, teacherDisciplines);
                 }
 
                 byte studentsCount = reader.ReadByte();
@@ -74,10 +83,11 @@ namespace Electronic_journal
                     for (byte j = 0; j < Disciplines.Count; j++)
                     {
                         byte markCount = reader.ReadByte();
-                        var disciplineMarks = new (byte mark, DateTime date)[markCount];
+                        studentMarks.Add(new(markCount));
+                        var disciplineMarks = studentMarks[j];
 
                         for (byte k = 0; k < markCount; k++)
-                            disciplineMarks[k] = (reader.ReadByte(), reader.ReadDateTime());
+                            disciplineMarks.Add((reader.ReadByte(), reader.ReadDateTime()));
 
                         studentMarks.Add(disciplineMarks);
                     }
@@ -95,11 +105,14 @@ namespace Electronic_journal
             {
                 case NotifyCollectionChangedAction.Add:
                     Marks.Insert(e.NewStartingIndex, new());
-                    Helper.mb("sadd ", e.NewStartingIndex);
+                    var studentMarks = Marks[e.NewStartingIndex];
+                    for (int i = 0; i < Disciplines.Count; i++)
+                        studentMarks.Add(new());
+                    //Helper.mb("sadd ", e.NewStartingIndex);
                     break;
                 case NotifyCollectionChangedAction.Remove:
                     Marks.RemoveAt(e.OldStartingIndex);
-                    Helper.mb("srem ", e.OldStartingIndex);
+                    //Helper.mb("srem ", e.OldStartingIndex);
                     break;
             }
         }
@@ -109,28 +122,31 @@ namespace Electronic_journal
             {
                 case NotifyCollectionChangedAction.Add:
                     for (int i = 0; i < Marks.Count; i++)
-                        Marks[i].Insert(e.NewStartingIndex, new (byte mark, DateTime date)[0]);
+                        Marks[i].Insert(e.NewStartingIndex, new());
 
                     if (e.NewStartingIndex + 1 < Disciplines.Count)
                     {
                         for (byte i = 0; i < Teachers.Count - 1; i++)
-                            for (byte j = 0; i < Teacher_disciplines[i].Length; i++)
+                            for (byte j = 0; i < Teacher_disciplines[i].Count; i++)
                                 if (Teacher_disciplines[i][j] >= e.NewStartingIndex)
                                     Teacher_disciplines[i][j]++;
 
                     }
-                    Helper.mb("dadd ", e.NewStartingIndex);
+                    //Helper.mb("dadd ", e.NewStartingIndex);
                     break;
                 case NotifyCollectionChangedAction.Remove:
                     for (int i = 0; i < Marks.Count; i++)
                         Marks[i].RemoveAt(e.OldStartingIndex);
 
                     for (byte i = 0; i < Teachers.Count - 1; i++)
-                        Teacher_disciplines[i] = Teacher_disciplines[i]
-                            .Except(new byte[] { (byte)e.OldStartingIndex })
-                            .Select(b => b > e.OldStartingIndex ? (byte)(b - 1) : b)
-                            .ToArray();
-                    Helper.mb("drem ", e.OldStartingIndex);
+                    {
+                        var disciplinesList = Teacher_disciplines[i];
+                        disciplinesList.Remove((byte)e.OldStartingIndex);
+                        for (int j = 0; j < disciplinesList.Count; j++)
+                            if (disciplinesList[j] > e.OldStartingIndex)
+                                disciplinesList[j]--;
+                    }
+                    //Helper.mb("drem ", e.OldStartingIndex);
                     break;
             }
         }
@@ -140,14 +156,14 @@ namespace Electronic_journal
             {
                 case NotifyCollectionChangedAction.Add:
                     if (e.NewStartingIndex + 1 == Teachers.Count)
-                        Teacher_disciplines.Add((byte)e.NewStartingIndex, new byte[0]);
+                        Teacher_disciplines.Add((byte)e.NewStartingIndex, new());
                     else
                     {
                         for (byte i = (byte)e.NewStartingIndex; i < Teachers.Count - 1; i++)
                             Teacher_disciplines.ChangeKey(i, (byte)(i + 1));
-                        Teacher_disciplines.Add((byte)e.NewStartingIndex, new byte[0]);
+                        Teacher_disciplines.Add((byte)e.NewStartingIndex, new());
                     }
-                    Helper.mb("tadd ", e.NewStartingIndex);
+                    //Helper.mb("tadd ", e.NewStartingIndex);
                     break;
                 case NotifyCollectionChangedAction.Remove:
                     if (e.OldStartingIndex == Teachers.Count)
@@ -158,21 +174,28 @@ namespace Electronic_journal
                         for (byte i = (byte)(e.NewStartingIndex + 1); i < Teachers.Count - 1; i++)
                             Teacher_disciplines.ChangeKey(i, (byte)(i - 1));
                     }
-                    Helper.mb("trem ", e.OldStartingIndex);
+                    //Helper.mb("trem ", e.OldStartingIndex);
                     break;
+                    
             }
         }
 
         public void AddDisciplineForTeacher(byte teacherIndex, byte disciplineIndex)
         {
             if (!Teacher_disciplines[teacherIndex].Contains(disciplineIndex))
-                Teacher_disciplines[teacherIndex] = Teacher_disciplines[teacherIndex].Append(disciplineIndex).ToArray();
+                Teacher_disciplines[teacherIndex].Add(disciplineIndex);
         }
-        public void SetDisciplinesForTeacher(byte teacherIndex, byte[] disciplineIndexes) => Teacher_disciplines[teacherIndex] = disciplineIndexes;
+        public void SetDisciplinesForTeacher(byte teacherIndex, byte[] disciplineIndexes) => Teacher_disciplines[teacherIndex] = disciplineIndexes.ToList();
         public void RemoveDisciplineFromTeacher(byte teacherIndex, byte disciplineIndex)
         {
             if (Teacher_disciplines[teacherIndex].Contains(disciplineIndex))
-                Teacher_disciplines[teacherIndex] = Teacher_disciplines[teacherIndex].Except(new byte[] { disciplineIndex }).ToArray();
+                Teacher_disciplines[teacherIndex].Remove(disciplineIndex);
+        }
+
+        public List<(byte mark, DateTime date)> GetMarksList(byte studentIndex, byte disciplineIndex) => Marks[studentIndex][disciplineIndex];
+        public void AddMark(byte studentIndex, byte disciplineIndex, byte mark, DateTime date)
+        {
+            Marks[studentIndex][disciplineIndex].Add((mark, date));
         }
 
         public void Export(Settings settings)
@@ -182,6 +205,9 @@ namespace Electronic_journal
         }
         public void ExportInfo(Settings settings)
         {
+            if (!Directory.Exists(settings.GetGroupFolderPatch(Name)))
+                Directory.CreateDirectory(settings.GetGroupFolderPatch(Name));
+
             using (BinaryWriter writer = new BinaryWriter(File.Open(settings.GetGroupInfoFilePatch(Name), FileMode.Create)))
             {
                 writer.Write((byte)Disciplines.Count);
@@ -192,7 +218,7 @@ namespace Electronic_journal
                 for (byte i = 0; i < Teachers.Count; i++)
                 {
                     writer.Write(Teachers[i]);
-                    writer.Write(Teacher_disciplines[i].Length);
+                    writer.Write((byte)Teacher_disciplines[i].Count);
                     foreach (byte d in Teacher_disciplines[i])
                         writer.Write(d);
                 }
@@ -211,7 +237,7 @@ namespace Electronic_journal
                     for (byte j = 0; j < Disciplines.Count; j++)
                     {
                         var disciplineMarks = Marks[i][j];
-                        writer.Write((byte)disciplineMarks.Length);
+                        writer.Write((byte)disciplineMarks.Count);
 
                         foreach (var mark in disciplineMarks)
                         {

@@ -8,10 +8,13 @@ namespace Electronic_journal
 {
     public class StringArrayEditor
     {
-        public List<string> Array;
+        public IList<string> Array;
+        public bool InitArrayIsReadOnly;
         public string Title;
         public int StartY;
         int FirstIndexY;
+
+        public bool AllowEscape;
 
         public string[] GetArray() => Array.ToArray();
 
@@ -28,19 +31,34 @@ namespace Electronic_journal
         }
         int ChoicesCount = 1;
 
-        public StringArrayEditor(string[] array, string title, int startY)
+        int ChoiceSaveIndex;
+        int ChoiceCancelIndex;
+
+        public StringArrayEditor(IList<string> array, string title, int startY, bool allowEscape = false)
         {
-            Array = new(array);
+            InitArrayIsReadOnly = array.IsReadOnly;
+            if (array.IsReadOnly)
+                Array = new List<string>(array);
+            else
+                Array = array;
+
             Title = title;
             StartY = startY;
             FirstIndexY = Title != null ? StartY + 1 : StartY;
+
+            if (allowEscape)
+            {
+                if (!InitArrayIsReadOnly) throw new Exception("Возможность отмены недоступна для изменяемых коллекций");
+                AllowEscape = allowEscape;
+            }
         }
-        public StringArrayEditor(string[] array, int startY) : this(array, null, startY) { }
-        public StringArrayEditor(int startY)
+        public StringArrayEditor(IList<string> array, int startY, bool allowEscape = false) : this(array, null, startY, allowEscape) { }
+        public StringArrayEditor(int startY, bool allowEscape = true)
         {
-            Array = new();
+            Array = new List<string>();
             StartY = startY;
             FirstIndexY = Title != null ? StartY + 1 : StartY;
+            AllowEscape = allowEscape;
         }
 
         int NumberLength(int num)
@@ -74,23 +92,30 @@ namespace Electronic_journal
                     Console.WriteLine($"{i}: {Array[i]}");
             else
                 Console.WriteLine(">_");
+            ChoiceSaveIndex = Math.Max(Array.Count, 1);
             Console.WriteLine(" Сохранить");
+            if (AllowEscape)
+            {
+                Console.WriteLine(" Отмена");
+                ChoiceCancelIndex = Array.Count + 1;
+            }
         }
         public void Clear()
         {
             Console.CursorLeft = 0;
-            ConsoleHelper.ClearArea(0, StartY, Console.WindowWidth, StartY + (Array.Count > 0 ? Array.Count + 1 : 2));
+            ConsoleHelper.ClearArea(0, StartY, Console.WindowWidth, StartY + ChoicesCount + (Title != null ? 1 : 0));
         }
         void Clear(int startIndex)
         {
             Console.CursorLeft = 0;
-            ConsoleHelper.ClearArea(0, FirstIndexY + startIndex, Console.WindowWidth, FirstIndexY + Array.Count + 1);
+            ConsoleHelper.ClearArea(0, FirstIndexY + startIndex, Console.WindowWidth, FirstIndexY + ChoicesCount + 1);
         }
 
-        public bool Edit(bool allowEscape = false)
+        public bool Edit()
         {
             string[] initArr = null;
-            if (allowEscape) initArr = GetArray();
+            if (AllowEscape)
+                initArr = GetArray();
 
             int yPos = StartY;
             if (Title != null)
@@ -100,7 +125,7 @@ namespace Electronic_journal
                 yPos++;
             }
 
-            ChoicesCount = Array.Count + 1;
+            ChoicesCount = Math.Max(Array.Count, 1) + 1 + (AllowEscape ? 1 : 0);
             Write();
             Select(0);
 
@@ -207,9 +232,10 @@ namespace Electronic_journal
 
                         ChoicesCount = Array.Count + 1;
                         break;
-                    case ConsoleKey.Enter when SelectedIndex == ChoicesCount - 1:
+                    case ConsoleKey.Enter when SelectedIndex == ChoiceSaveIndex:
                         return true;
-                    case ConsoleKey.Escape when allowEscape:
+                    case ConsoleKey.Enter when AllowEscape && SelectedIndex == ChoiceCancelIndex:
+                    case ConsoleKey.Escape when AllowEscape:
                         Array = initArr.ToList();
                         Clear(0);
                         Write();

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
+﻿using System.IO;
 
 namespace Electronic_journal
 {
@@ -15,8 +12,8 @@ namespace Electronic_journal
         public enum AccountType : byte
         {
             Admin = 1,
-            Teacher = 2,
-            Student = 3
+            Teacher,
+            Student
         }
         public AccountType Type { get; }
 

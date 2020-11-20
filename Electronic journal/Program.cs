@@ -23,28 +23,42 @@ namespace Electronic_journal
         static void Main(string[] args)
         {
             Admin ad = new Admin("admin", "admin");
+            //if (1 is >= 0 and <= 3)
 
-            
+            /*Group gr = new Group("П50-1-19");
+            gr.Teachers.Add("t1");
+            gr.Teachers.Add("t2");
+            gr.Disciplines.Add("d1");
+            gr.Disciplines.Insert(0, "d0");
+            gr.AddDisciplineForTeacher(0, 1);
+            gr.Students.Add("st1");
+            gr.Students.Add("st2");
+            gr.AddMark(0, 0, 5, DateTime.Today);*/
+            //Helper.mb(typeof(int[]).IsValueType);
 
-            //Group gr = new Group("P50");
+            /*(gr.Teachers as IList<string>).Add("t1");
+            string[] s = new string[] { "123" };
+            Helper.mb((s as IList<string>).IsReadOnly);//.Add("321");
+            Helper.mb(Helper.ArrayToStr(s));*/
 
             //Reader.ReadLine_esc();
 
             /*StringArrayEditor sa = new(new string[] { "123456789", "987654321", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", "4534553453453453", }, "Title", 4);
             sa.Edit();
             Helper.mb(Helper.ArrayToStr(sa.GetArray().Select(s => $"|{s}|").ToArray()));*/
+            //Helper.mb('|', String.Join(',', "1 2 3 ".Split(' ', StringSplitOptions.RemoveEmptyEntries)), '|');
 
-            
             Settings settings = new Settings();
+            //gr.Export(settings);
             //settings.RemoveAccount("Ivan_V");
-             /*Student st = new Student("Ivan_V", "12345", "Иван", "Воркунов", "Викторович", DateTime.Today, "П50-1-19");
-             var w = settings.GetAccountFileWriter("IV", FileMode.Create);
-             st.Export(w);
-             w.Dispose();
-            var r = settings.GetAccountFileReader("Ivan_V");
-            r.ReadByte();
-            Student st1 = new Student(r);
-            Helper.mb(st1.Group);*/
+            /*Student st = new Student("Ivan_V", "12345", "Иван", "Воркунов", "Викторович", DateTime.Today, "П50-1-19");
+            var w = settings.GetAccountFileWriter("IV", FileMode.Create);
+            st.Export(w);
+            w.Dispose();
+           var r = settings.GetAccountFileReader("Ivan_V");
+           r.ReadByte();
+           Student st1 = new Student(r);
+           Helper.mb(st1.Group);*/
 
 
             ad.UI(settings);

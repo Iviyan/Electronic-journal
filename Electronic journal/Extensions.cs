@@ -17,12 +17,12 @@ namespace Electronic_journal
             return v;
         }*/
 
-        public static bool Contains(this string[] array, string value)
+        public static bool Contains<T>(this T[] array, T value)
         {
             if (array == null) return false;
 
             for (int i = 0; i < array.Length; i++)
-                if (array[i] == value)
+                if (array[i].Equals(value))
                     return true;
 
             return false;
@@ -36,6 +36,15 @@ namespace Electronic_journal
 
             dict[newKey] = value;
             return true;
+        }
+
+        public static T[] ToArray<T>(this SortedSet<T> ss)
+        {
+            if (ss == null) return new T[0];
+
+            T[] arr = new T[ss.Count];
+            ss.CopyTo(arr);
+            return arr;
         }
 
         public static int Read7BitEncodedInt(this System.IO.BinaryReader reader)

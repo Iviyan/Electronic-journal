@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Electronic_journal
 {
-    interface IUI
+    public interface IUI
     {
         void UI(Settings settings);
     }
