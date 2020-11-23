@@ -16,7 +16,7 @@ namespace Electronic_journal
             while (b < 0);
             return v;
         }*/
-
+        public static void mb<T>(this T[] arr) => Helper.mb(Helper.ArrayToStr(arr));
         public static bool Contains<T>(this T[] array, T value)
         {
             if (array == null) return false;
@@ -47,6 +47,14 @@ namespace Electronic_journal
             return arr;
         }
 
+        public static T[] Add<T>(this T[] arr, T elem)
+        {
+            T[] newArr = new T[arr.Length + 1];
+            arr.CopyTo(newArr, 0);
+            newArr[arr.Length] = elem;
+            return newArr;
+        }
+        
         public static int Read7BitEncodedInt(this System.IO.BinaryReader reader)
         {
             uint result = 0;

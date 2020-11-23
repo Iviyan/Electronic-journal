@@ -20,6 +20,7 @@ namespace Electronic_journal
             [DateTimeMode(OnlyDate = true)]
             public DateTime d { get; set; }
         }*/
+        
         static void Main(string[] args)
         {
             Admin ad = new Admin("admin", "admin");

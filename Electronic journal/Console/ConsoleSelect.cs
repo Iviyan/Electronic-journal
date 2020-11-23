@@ -54,7 +54,7 @@ namespace Electronic_journal
         public int CurrentMaxWidth { get; private set; }
         public int CurrentHeight { get; private set; }
         public ObservableCollection<string> Choices { get; private set; }
-        private HashSet<int> disabled = new HashSet<int>();
+        private HashSet<int> Disabled;
         private int interval;
         public int Interval
         {
@@ -117,7 +117,7 @@ namespace Electronic_journal
         public int PageCount => Pages.Length;
 
 
-        public ConsoleSelect(string[] choices, int selectedIndex = 0, int interval = 0, int startX = 0, int startY = 0, int maxWidth = 0, int maxHeight = 0)
+        public ConsoleSelect(string[] choices, int selectedIndex = 0, int interval = 0, int startX = 0, int startY = 0, int maxWidth = 0, int maxHeight = 0, int[] disabled = null)
         {
             Choices = new ObservableCollection<string>(choices);
             Choices.CollectionChanged += Choices_CollectionChanged;
@@ -128,6 +128,11 @@ namespace Electronic_journal
             this.startY = startY;
             this.maxWidth = maxWidth;
             this.maxHeight = maxHeight;
+
+            if (disabled != null)
+                Disabled = new(disabled);
+            else
+                Disabled = new();
 
             CurrentMaxWidth = 0;
 
@@ -318,7 +323,7 @@ namespace Electronic_journal
             for (int i = 0; i < lines.Length; i++)
             {
                 Console.SetCursorPosition(StartX + 1, StartY + top + i);
-                bool disable = disabled.Contains(i);
+                bool disable = Disabled.Contains(i);
                 if (disable) Console.ForegroundColor = ConsoleColor.Gray;
                 Console.Write(lines[i]);
                 if (disable) Console.ForegroundColor = ConsoleColor.White;
@@ -407,17 +412,17 @@ namespace Electronic_journal
 
         public void Disable(int index)
         {
-            if (!disabled.Contains(index))
+            if (!Disabled.Contains(index))
             {
-                disabled.Add(index);
+                Disabled.Add(index);
                 WriteLine(Choices[index], selHelper[index].top);
             }
         }
         public void Enable(int index)
         {
-            if (disabled.Contains(index))
+            if (Disabled.Contains(index))
             {
-                disabled.Remove(index);
+                Disabled.Remove(index);
                 WriteLine(Choices[index], selHelper[index].top);
             }
         }
@@ -462,7 +467,7 @@ namespace Electronic_journal
                         else Page = PageCount - 1;
                         break;
                     case ConsoleKey.Enter:
-                        if (!disabled.Contains(SelectedIndex)) return SelectedIndex;
+                        if (!Disabled.Contains(SelectedIndex)) return SelectedIndex;
                         break;
                     default:
                         if (onPressKeyEventExists)

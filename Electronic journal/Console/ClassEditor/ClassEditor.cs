@@ -8,7 +8,7 @@ namespace Electronic_journal
     public class ClassEditor<T>
     {
         public readonly T Obj;
-        public (PropertyInfo property, string name)[] Properties;
+        public (PropertyInfo property, string name, bool readOnly)[] Properties;
         public ValidateFunc Validate;
         public ICustomEditor<T>[] CustomEditors;
 
@@ -21,6 +21,20 @@ namespace Electronic_journal
             get => selectedIndex;
             set
             {
+                if (ReadOnlyPropertyDataHeight > 0) ClearReadOnlyProperty();
+                if (InputError)
+                {
+                    int startX = 2 + Properties[selectedIndex].name.Length + 2,
+                        maxLength = Console.WindowWidth - 1 - startX;
+                    string sval = GetStringValue(Properties[selectedIndex].property);
+                    Console.CursorLeft = startX;
+                    WriteValue(sval, maxLength);
+                    int length = Console.CursorLeft - startX;
+                    if (ValuesLength[selectedIndex] > length)
+                    Console.Write(new string(' ', ValuesLength[selectedIndex] - length));
+                    ClearError();
+                }
+
                 Select(selectedIndex, ' ');
                 selectedIndex = value;
                 Select(selectedIndex);
@@ -29,8 +43,10 @@ namespace Electronic_journal
         }
 
         int[] ValuesLength;
-        
+
         (bool isValueType, object value)[] Changes;
+
+        bool InputError = false;
 
         static bool validateTrue(T obj, string[] changedProperties, out string msg)
         {
@@ -47,7 +63,7 @@ namespace Electronic_journal
             Validate = validate;
             StartY = startY;
 
-            var properties = new List<(PropertyInfo, string)>();
+            var properties = new List<(PropertyInfo, string, bool)>();
             int ind = 0;
             Type lastType = null;
             foreach (var property in typeof(T).GetProperties())
@@ -63,7 +79,7 @@ namespace Electronic_journal
                 if (attribute == null)
                     continue;
 
-                properties.Insert(ind++, (property, attribute.DisplayValue));
+                properties.Insert(ind++, (property, attribute.DisplayValue, attribute.ReadOnly));
             }
             Properties = properties.ToArray();
             ValuesLength = new int[properties.Count];
@@ -127,7 +143,6 @@ namespace Electronic_journal
             }
             else
                 Console.Write(val);
-
         }
 
         void Write()
@@ -140,7 +155,11 @@ namespace Electronic_journal
                 int valueMaxLength = Console.WindowWidth - (p.name.Length + 4);
                 string value = GetStringValue(p.property);
                 ValuesLength[i] = value.Length;
-                WriteValue(value, valueMaxLength);
+                if (p.readOnly)
+                    using (new UseConsoleColor(ConsoleColor.DarkGray))
+                        WriteValue(value, valueMaxLength);
+                else
+                    WriteValue(value, valueMaxLength);
                 Console.CursorLeft = 0;
                 Console.CursorTop++;
             }
@@ -165,8 +184,9 @@ namespace Electronic_journal
         }
         void SetCursorPosition()
         {
-            if (SelectedIndex < Properties.Length) {
-                int pos = Properties[SelectedIndex].name.Length + 4 + GetStringValue(Properties[SelectedIndex].property).Length;
+            if (SelectedIndex < Properties.Length + CustomEditors.Length)
+            {
+                int pos = Properties[SelectedIndex].name.Length + 4 + ValuesLength[SelectedIndex];
                 if (pos < Console.WindowWidth)
                     Console.CursorLeft = pos;
                 else
@@ -179,10 +199,11 @@ namespace Electronic_journal
         int errorMsgHeight = 0;
         void ClearError()
         {
+            if (errorMsgHeight == 0) return;
             ConsoleHelper.ClearArea(1, StartY + ChoicesCount + 1, Console.WindowWidth - 1, StartY + Properties.Length + 1 + errorMsgHeight);
             errorMsgHeight = 0;
         }
-        void writeError(string msg)
+        void WriteError(string msg)
         {
             ClearError();
             using (new CursonPosition(1, StartY + ChoicesCount + 1))
@@ -190,27 +211,65 @@ namespace Electronic_journal
                 Console.Write($"!> {msg}");
             errorMsgHeight = (int)Math.Ceiling($"!> {msg}".Length / (double)Console.WindowWidth);
         }
+        void WriteErrorAndMark(string msg)
+        {
+            WriteError(msg);
+            InputError = true;
+        }
 
+        int ReadOnlyPropertyDataHeight = 0;
+        void ViewReadOnlyProperty()
+        {
+            var value = Properties[SelectedIndex].property.GetValue(Obj);
+            switch (value)
+            {
+                case IList<string> val:
+                    {
+                        if (val.Count == 0) return;
+                        ClearError();
+
+                        int startY = StartY + ChoicesCount + 1;
+                        Console.SetCursorPosition(0, startY);
+                        foreach (string s in val)
+                            Console.WriteLine($"> {s}");
+                        ReadOnlyPropertyDataHeight = Console.CursorTop - startY;
+                    }
+                    break;
+            }
+        }
+        void ClearReadOnlyProperty()
+        {
+            if (ReadOnlyPropertyDataHeight == 0) return;
+            int startY = StartY + ChoicesCount + 1;
+            ConsoleHelper.ClearArea(0, startY, Console.WindowWidth - 1, startY + ReadOnlyPropertyDataHeight - 1);
+            ReadOnlyPropertyDataHeight = 0;
+        }
+        void EditAdditionalProperty()
+        {
+            int customEditorIndex = selectedIndex - Properties.Length;
+            var editor = CustomEditors[customEditorIndex];
+
+            bool edited = editor.Edit(StartY + ChoicesCount + 2);
+            editor.Clear();
+            Console.CursorTop = StartY + SelectedIndex;
+            if (edited)
+            {
+                Console.CursorLeft = 2 + Properties[selectedIndex].name.Length + 2;
+                Console.Write(editor.GetStringValue());
+            }
+            else
+                SetCursorPosition();
+        }
         void EditProperty(bool backspace = false)
         {
-            bool isProperty = SelectedIndex < Properties.Length;
-            int customEditorIndex = selectedIndex - Properties.Length;
-            if (!isProperty && backspace) return;
+            void setCursorBeforeInput() => Console.CursorLeft = 2 + Properties[selectedIndex].name.Length + 2;
 
-            void setCursorBeforeInput()
-            {
-                Console.CursorLeft = 2
-                + (isProperty ? Properties[selectedIndex].name.Length : CustomEditors[customEditorIndex].PropertyName.Length)
-                + 2;
-            }
             setCursorBeforeInput();
 
             void updateCurrentValue(string value)
             {
                 setCursorBeforeInput();
-                int valueMaxLength =
-                    Console.WindowWidth
-                    - ((isProperty ? Properties[selectedIndex].name.Length : CustomEditors[customEditorIndex].PropertyName.Length) + 4);
+                int valueMaxLength = Console.WindowWidth - (Properties[selectedIndex].name.Length + 4);
 
                 WriteValue(value, valueMaxLength);
                 if (value.Length < ValuesLength[SelectedIndex] && value.Length <= valueMaxLength)
@@ -222,22 +281,13 @@ namespace Electronic_journal
                 ValuesLength[SelectedIndex] = value.Length;
             }
 
-            if (!isProperty)
+            void CheckBackspace()
             {
-                //Clear();
-                var editor = CustomEditors[customEditorIndex];
-                editor.Edit(StartY + ChoicesCount + 2);
-                editor.Clear();
-                Console.CursorTop = StartY + SelectedIndex;
-                SetCursorPosition();
-                //Write();
-                return;
-            }
-
-            if (backspace)
-            {
-                updateCurrentValue("");
-                setCursorBeforeInput();
+                if (backspace)
+                {
+                    updateCurrentValue("");
+                    setCursorBeforeInput();
+                }
             }
 
             var p = Properties[selectedIndex];
@@ -248,7 +298,7 @@ namespace Electronic_journal
             {
                 case int val:
                     {
-
+                        CheckBackspace();
                         string sval = val.ToString();
                         if (Reader.ReadLine_esc(ref input, backspace ? "" : sval, false))
                         {
@@ -257,16 +307,22 @@ namespace Electronic_journal
                             if (parse)
                                 p.property.SetValue(Obj, result);
                             else
-                                writeError("Ошибка ввода числа");
+                                WriteErrorAndMark("Ошибка ввода числа");
                         }
+                        else if (backspace)
+                            updateCurrentValue(sval);
                     }
                     break;
                 case string val:
+                    CheckBackspace();
                     if (Reader.ReadLine_esc(ref input, backspace ? "" : val, false))
                         p.property.SetValue(Obj, input);
+                    else if (backspace)
+                        updateCurrentValue(val);
                     break;
                 case DateTime val:
                     {
+                        CheckBackspace();
                         var attribute = p.property.GetCustomAttributes<DateTimeParamsAttribute>(true)
                                 .SingleOrDefault();
                         string sval = GetStringValueFromDateTime(val, attribute);
@@ -274,12 +330,16 @@ namespace Electronic_journal
                         if (Reader.ReadLine_esc(ref input, backspace ? "" : sval, false))
                         {
                             bool parse = DateTime.TryParse(input, out DateTime result);
-                            updateCurrentValue(parse ? GetStringValueFromDateTime(result, attribute) : sval);
+                            updateCurrentValue(parse ? GetStringValueFromDateTime(result, attribute) : input);
                             if (parse)
                                 p.property.SetValue(Obj, result);
                             else
-                                writeError("Ошибка ввода даты");
+                            {
+                                WriteErrorAndMark("Ошибка ввода даты");
+                            }
                         }
+                        else if (backspace)
+                            updateCurrentValue(sval);
                     }
                     break;
                 case IList<string> val:
@@ -287,11 +347,14 @@ namespace Electronic_journal
                         ClearError();
 
                         StringArrayEditor stringArrayEditor = new(val, $"{p.name}:", StartY + ChoicesCount + 2, val.IsReadOnly);
-                        bool esc = !stringArrayEditor.Edit();
+                        bool edited = stringArrayEditor.Edit();
                         Console.CursorTop = StartY + SelectedIndex;
-                        if (!esc) {
+                        if (edited)
+                        {
                             if (val.IsReadOnly)
                                 p.property.SetValue(Obj, stringArrayEditor.GetArray());
+                            Changes[SelectedIndex].value = true;
+
                             updateCurrentValue(GetStringValueFromStringArray(stringArrayEditor.GetArray()));
                         }
                         stringArrayEditor.Clear();
@@ -330,7 +393,7 @@ namespace Electronic_journal
                 if (Changes[i].isValueType)
                     if (!Properties[i].property.GetValue(Obj).Equals(Changes[i].value))
                         changedProperties.Add(Properties[i].property.Name);
-                else
+                    else
                     if ((bool)Changes[i].value)
                         changedProperties.Add(Properties[i].property.Name);
             }
@@ -343,7 +406,7 @@ namespace Electronic_journal
             }
             else
             {
-                writeError(msg);
+                WriteError(msg);
                 return false;
             }
         }
@@ -384,7 +447,7 @@ namespace Electronic_journal
                             SelectedIndex = ChoicesCount - 1;
                         break;
 
-                    case ConsoleKey.Backspace:
+                    case ConsoleKey.Backspace when SelectedIndex < Properties.Length && !Properties[SelectedIndex].readOnly:
                         EditProperty(true);
                         break;
 
@@ -395,7 +458,14 @@ namespace Electronic_journal
                         }
                         else
                         {
-                            EditProperty();
+                            if (SelectedIndex < Properties.Length)
+                                if (Properties[SelectedIndex].readOnly)
+                                    ViewReadOnlyProperty();
+                                else
+                                    EditProperty();
+                            else
+                                EditAdditionalProperty();
+
                         }
                         break;
 

@@ -17,6 +17,7 @@ namespace Electronic_journal
         public string GetGroupJournalFilePatch(string groupName) => $@"{GetGroupFolderPatch(groupName)}\journal.dat";
         public SettingsFile AccountsListFile { get; }
         public SettingsFile GroupsListFile { get; }
+        public bool CheckAccountFile(string login) => File.Exists(@$"{AccountsFolderName}\{login}.dat");
         public BinaryReader GetAccountFileReader(string login, FileMode fileMode = FileMode.Open) => new BinaryReader(File.Open(@$"{AccountsFolderName}\{login}.dat", fileMode));
         public BinaryWriter GetAccountFileWriter(string login, FileMode fileMode = FileMode.Truncate) => new BinaryWriter(File.Open(@$"{AccountsFolderName}\{login}.dat", fileMode));
 
@@ -74,8 +75,11 @@ namespace Electronic_journal
 
         public Account LoadAccount(string login)
         {
-            using (BinaryReader reader = GetAccountFileReader(login))
-                return LoadAccount(reader);
+            if (CheckAccountFile(login))
+                using (BinaryReader reader = GetAccountFileReader(login))
+                    return LoadAccount(reader);
+            else
+                return null;
         }
         public Account LoadAccount(BinaryReader reader) => LoadAccount(reader, reader.ReadByte(), reader.ReadString(), reader.ReadString());
         public Account LoadAccount(BinaryReader reader, byte type_, string login, string pass)
@@ -157,6 +161,7 @@ namespace Electronic_journal
 
             Directory.Delete(GetGroupFolderPatch(groupName));
         }
+
     }
 }
 /* Структура файлов:
@@ -198,36 +203,5 @@ namespace Electronic_journal
  *     ]
  *   ]
  * ]
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * Groups\<Group name>.dat
- * {
- *   Number of disciplines : byte,
- *   [ discipline : string, ],
- *   
- *   Number of teachers : byte,
- *   [
- *     Teacher's login : string,
- *     Number of disciplines : byte,
- *     [ disciplineID  : byte, ]
- *   ],
- * 
- *   [
- *     Student's login : stirng, 
- *     [                            // index ~ id of discipline
- *       number of marks : byte,
- *       [
- *         mark : byte,
- *         date : (DateTime : long)
- *       ]
- *     ]
- *   ]
- * }
  * 
  */

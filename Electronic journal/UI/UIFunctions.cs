@@ -30,5 +30,7 @@ namespace Electronic_journal
             }
             return false;
         }
+
+        public static string GetInitials(Person p) => $"{p.LastName} {p.FirstName[0]}.{p.Patronymic[0]}.";
     }
 }

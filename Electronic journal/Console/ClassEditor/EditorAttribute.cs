@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Electronic_journal
 {
-    [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     public class EditorAttribute : Attribute
     {
         public EditorAttribute(string displayValue)
@@ -14,15 +14,16 @@ namespace Electronic_journal
         }
 
         public string DisplayValue { get; set; }
+        public bool ReadOnly { get; set; }
     }
     
-    [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     public class DateTimeParamsAttribute : Attribute
     {
         public DateTimeParamsAttribute() { }
         public bool OnlyDate { get; set; }
     }
-    [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     public class StringParamsAttribute : Attribute
     {
         public StringParamsAttribute() { }

@@ -248,5 +248,28 @@ namespace Electronic_journal
                 }
             }
         }
+
+        public static string[] GetTeacherDisciplines(Settings settings, string groupName, string teacher)
+        {
+            using (BinaryReader reader = new BinaryReader(File.Open(settings.GetGroupInfoFilePatch(groupName), FileMode.Open)))
+            {
+                List<string> Disciplines = new();
+                byte disciplinesCount = reader.ReadByte();
+                for (byte i = 0; i < disciplinesCount; i++)
+                    Disciplines.Add(reader.ReadString());
+
+                byte teachersCount = reader.ReadByte();
+                for (byte i = 0; i < teachersCount; i++)
+                {
+                    if (reader.ReadString() == teacher) ;
+                    byte teacherDisciplinesCount = reader.ReadByte();
+                    string[] disciplines = new string[teacherDisciplinesCount];
+                    for (byte j = 0; j < teacherDisciplinesCount; j++)
+                        disciplines[j] = Disciplines[reader.ReadByte()];
+                    return disciplines;
+                }
+            }
+            return null;
+        }
     }
 }

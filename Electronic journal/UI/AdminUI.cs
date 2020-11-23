@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using static Electronic_journal.Account;
 
 namespace Electronic_journal
@@ -174,10 +172,27 @@ namespace Electronic_journal
             msg = ""; return true;
         }
 
-        // TODO: Сделать проверку на то, существует ли группа
         bool validateStudent(Student student, string[] changedProperties, out string msg)
         {
             if (!validateLoginPassword(student, changedProperties, out msg)) return false;
+
+            if (student.Group != "")
+            {
+                if (groupsList == null) UpdateGroupsList();
+                if (groupsList.Contains(student.Group))
+                {
+                    msg = $"Группы {student.Group} не существует";
+                    return false;
+                }
+                if (changedProperties.Contains(nameof(student.Group)))
+                {
+                    Group group = new Group(settings, student.Group);
+                    if (!group.Students.Contains(student.Login))
+                        group.Students.Add(student.Login);
+                    group.Export(settings);
+                }
+            }
+
             msg = ""; return true;
         }
 
@@ -198,7 +213,8 @@ namespace Electronic_journal
                             validateAdmin
                         );
                         if (editor.Edit())
-                            account.Export(RewriteFile());
+                            using (var writer = RewriteFile())
+                                account.Export(writer);
                         editor.Clear();
                     }
                     break;
@@ -209,19 +225,34 @@ namespace Electronic_journal
                             validateTeacher
                         );
                         if (editor.Edit())
-                            account.Export(RewriteFile());
+                            using (var writer = RewriteFile())
+                                account.Export(writer);
                         editor.Clear();
                     }
                     break;
                 case AccountType.Student:
                     {
+                        Student student = (Student)account;
+                        string studentGroup = student.Group;
                         ClassEditor<Student> editor = new ClassEditor<Student>(
-                            (Student)account,
+                            student,
                             validateStudent
                         );
                         if (editor.Edit())
-                            account.Export(RewriteFile());
+                            using (var writer = RewriteFile())
+                                account.Export(writer);
                         editor.Clear();
+
+                        if (studentGroup != "" && student.Group != studentGroup && groupsList.Contains(studentGroup))
+                        {
+                            Group group = new Group(settings, studentGroup);
+                            if (group.Students.Contains(student.Login))
+                            {
+                                group.Students.Remove(student.Login);
+                                group.Export(settings);
+                            }
+
+                        }
                     }
                     break;
             }
@@ -269,7 +300,7 @@ namespace Electronic_journal
                         break;
                     case 2: //Student
                         {
-                            account = new Student("", "", "", "", "", DateTime.Today, "1");
+                            account = new Student("", "", "", "", "", DateTime.Today, "");
                             ClassEditor<Student> editor = new ClassEditor<Student>(
                                 (Student)account,
                                 validateStudent
@@ -283,17 +314,145 @@ namespace Electronic_journal
             }
         }
 
-        bool validateGroup(Group group, string[] changedProperties, out string msg)
+        // TODO: сделать проверку на: существование студентов, учителей, наличие у них дисциплин -> classEditor + Warnings
+        bool validateGroupName(Group group, string[] changedProperties, out string msg)
         {
-            if (changedProperties.Contains(nameof(group.Name)))
+            if (changedProperties.Contains(nameof(group.Name)) && groupsList.Contains(group.Name))
             {
-                if (groupsList.Contains(group.Name))
-                {
-                    msg = "Группа с таким именем уже существует";
-                    return false;
-                }
+                msg = "Группа с таким именем уже существует";
+                return false;
+
             }
             msg = ""; return true;
+        }
+        void SetStudentsGroup(IEnumerable<Student> students, string groupName)
+        {
+            foreach (var student in students)
+            {
+                student.Group = groupName;
+                using (var writer = settings.GetAccountFileWriter(student.Login))
+                    student.Export(writer);
+            }
+        }
+        void SetStudentsGroup(IEnumerable<string> students, string groupName)
+        {
+            foreach (var studentLogin in students)
+            {
+                Student student = settings.LoadAccount(studentLogin) as Student;
+                if (student == null) continue;
+                student.Group = groupName;
+                using (var writer = settings.GetAccountFileWriter(student.Login))
+                    student.Export(writer);
+            }
+        }
+        void SetTeachersGroupAndDisciplines(List<(Teacher teacher, byte[] disciplines)> teachers, Group group)
+        {
+            foreach (var teacher in teachers)
+            {
+                if (!teacher.teacher.Groups.Contains(group.Name))
+                    teacher.teacher.Groups = teacher.teacher.Groups.Add(group.Name);
+
+                foreach (byte d in teacher.disciplines)
+                    if (!teacher.teacher.Disciplines.Contains(group.Disciplines[d]))
+                        teacher.teacher.Disciplines = teacher.teacher.Disciplines.Add(group.Disciplines[d]);
+
+                using (var writer = settings.GetAccountFileWriter(teacher.teacher.Login))
+                    teacher.teacher.Export(writer);
+            }
+        }
+        void UpdateTeachersGroupAndDisciplines(List<(Teacher teacher, byte[] _disciplines, byte[] disciplines)> teachers, Group group, string groupPreviousName = null)
+        {
+            foreach (var teacher in teachers)
+            {
+                if (groupPreviousName == null)
+                {
+                    if (!teacher.teacher.Groups.Contains(group.Name))
+                        teacher.teacher.Groups = teacher.teacher.Groups.Add(group.Name); // TODO: убрать
+                }
+                else
+                {
+                    int index = Array.IndexOf(teacher.teacher.Groups, groupPreviousName);
+                    teacher.teacher.Groups[index] = group.Name;
+                }
+                var newDisciplines = teacher.disciplines.Except(teacher._disciplines);//.ToArray();
+                var deletedDisciplines = teacher._disciplines.Except(teacher.disciplines);//.ToArray();
+                foreach (byte d in newDisciplines)
+                    if (!teacher.teacher.Disciplines.Contains(group.Disciplines[d]))
+                        teacher.teacher.Disciplines = teacher.teacher.Disciplines.Add(group.Disciplines[d]);
+
+                teacher.teacher.Disciplines = teacher.teacher.Disciplines.Except(
+                    ListDisciplinesToRemove(teacher.teacher, group.Name, deletedDisciplines.Select(b => group.Disciplines[b]))
+                    ).ToArray();
+
+                using (var writer = settings.GetAccountFileWriter(teacher.teacher.Login))
+                    teacher.teacher.Export(writer);
+            }
+        }
+        string[] ListDisciplinesToRemove(Teacher teacher, string groupName, IEnumerable<string> disciplines)
+        {
+            if (disciplines == null || !disciplines.Any()) return new string[] { };
+
+            HashSet<string> Disciplines = new(disciplines);
+            var groups = teacher.Groups.Except(new string[] { groupName });
+            foreach (string group in groups)
+            {
+                string[] disciplines_ = Group.GetTeacherDisciplines(settings, group, teacher.Login);
+                Disciplines.ExceptWith(disciplines_);
+            }
+            return Disciplines.ToArray();
+        }
+        void RemoveTeachersFromGroup(IEnumerable<string> teachers, string groupName)
+        {
+            foreach (var teachertLogin in teachers)
+            {
+                Teacher teacher = settings.LoadAccount(teachertLogin) as Teacher;
+                if (teacher == null) continue;
+                teacher.Groups = teacher.Groups.Except(new string[] { groupName }).ToArray();
+                teacher.Disciplines = teacher.Disciplines.Except(
+                    ListDisciplinesToRemove(teacher, groupName, teacher.Disciplines) // Просто удаляю все ненайденные дисциплины
+                    ).ToArray();
+                using (var writer = settings.GetAccountFileWriter(teacher.Login))
+                    teacher.Export(writer);
+            }
+        }
+
+        Student GetStudentAndCheckGroup(string studentLogin, out string msg)
+        {
+            if (!accountsList.Contains(studentLogin))
+            {
+                msg = $"Студента с логином {studentLogin} не существует";
+                return null;
+            }
+            var account = settings.LoadAccount(studentLogin);
+            if (account.Type != AccountType.Student)
+            {
+                msg = $"Аккаунт с логином {studentLogin} ({(account.Type == AccountType.Teacher ? "преподаватель" : "админимтратор")}) не является студентом";
+                return null;
+            }
+            Student student = account as Student;
+            if (student.Group != "")
+            {
+                msg = $"Студент {studentLogin} ({UIFunctions.GetInitials(student)}) уже состоит в группе {student.Group}";
+                return null;
+            }
+            msg = "";
+            return student;
+        }
+        Teacher GetTeacherAndCheck(string teacherLogin, out string msg)
+        {
+            if (!accountsList.Contains(teacherLogin))
+            {
+                msg = $"Преподавателя с логином {teacherLogin} не существует";
+                return null;
+            }
+            var account = settings.LoadAccount(teacherLogin);
+            if (account.Type != AccountType.Teacher)
+            {
+                msg = $"Аккаунт с логином {teacherLogin} ({(account.Type == AccountType.Student ? "студент" : "админимтратор")}) не является преподавателем";
+                return null;
+            }
+            msg = "";
+            return account as Teacher;
         }
 
         void ShowGroupAddMenu()
@@ -302,7 +461,32 @@ namespace Electronic_journal
             Group group = new Group("");
             ClassEditor<Group> editor = new ClassEditor<Group>(
                 group,
-                validateGroup,
+                (Group group, string[] changedProperties, out string msg) =>
+                {
+                    if (!validateGroupName(group, changedProperties, out msg)) return false;
+
+                    List<Student> students = new();
+                    for (int i = 0; i < group.Students.Count; i++)
+                    {
+                        string studentLogin = group.Students[i];
+                        Student student = GetStudentAndCheckGroup(studentLogin, out msg);
+                        if (student == null) return false;
+                        students.Add(student);
+                    }
+                    List<(Teacher teacher, byte[] disciplines)> teachers = new();
+                    for (int i = 0; i < group.Teachers.Count; i++)
+                    {
+                        string teacherLogin = group.Teachers[i];
+                        Teacher teacher = GetTeacherAndCheck(teacherLogin, out msg);
+                        if (teacher == null) return false;
+                        teachers.Add((teacher, group.Teacher_disciplines[(byte)i].ToArray()));
+                    }
+
+                    SetStudentsGroup(students, group.Name);
+                    SetTeachersGroupAndDisciplines(teachers, group);
+
+                    msg = ""; return true;
+                },
                 new ICustomEditor<Group>[]
                 {
                     new TeachersAndDisciplinesEditor(group, "Дисциплины преподавателей")
@@ -331,7 +515,12 @@ namespace Electronic_journal
                 {
                     menu.Clear();
                     Group group = new Group(settings, groupsList[index]);
-                    string name = group.Name;
+                    string _name = group.Name;
+                    string[] _students = group.Students.ToArray();
+                    string[] _teachers = group.Teachers.ToArray();
+                    byte[][] _teachersDisciplines = new byte[group.Teachers.Count][];
+                    foreach (var kv in group.Teacher_disciplines)
+                        _teachersDisciplines[kv.Key] = kv.Value.ToArray();
 
                     switch (selectedIndex)
                     {
@@ -339,20 +528,74 @@ namespace Electronic_journal
                             {
                                 ClassEditor<Group> editor = new ClassEditor<Group>(
                                     group,
-                                    validateGroup,
+                                    (Group group, string[] changedProperties, out string msg) =>
+                                    {
+                                        if (!validateGroupName(group, changedProperties, out msg)) return false;
+
+                                        List<Student> newStudentsList = new();
+                                        var newStudents = group.Students.Except(_students);
+                                        var deletedStudents = _students.Except(group.Students);
+
+                                        foreach (string studentLogin in newStudents)
+                                        {
+                                            Student student = GetStudentAndCheckGroup(studentLogin, out msg);
+                                            if (student == null) return false;
+                                            newStudentsList.Add(student);
+                                        }
+
+                                        List<(Teacher teacher, byte[] disciplines)> newTeachersList = new();
+                                        List<(Teacher teacher, byte[] _disciplines, byte[] disciplines)> updatedTeachersList = new();
+                                        var newTeachers = group.Teachers.Except(_teachers);
+                                        var deletedTeachers = _teachers.Except(group.Teachers);
+                                        for (int i = 0; i < group.Teachers.Count; i++)
+                                        {
+                                            string teacherLogin = group.Teachers[i];
+                                            if (newTeachers.Contains(teacherLogin))
+                                            {
+                                                Teacher teacher = GetTeacherAndCheck(teacherLogin, out msg);
+                                                if (teacher == null) return false;
+                                                newTeachersList.Add((teacher, group.Teacher_disciplines[(byte)i].ToArray()));
+                                            }
+                                            else
+                                            {
+                                                List<byte> disciplinesList = group.Teacher_disciplines[(byte)i];
+                                                byte[] _disciplinesList = _teachersDisciplines[Array.IndexOf(_teachers, teacherLogin)];
+                                                if (disciplinesList.SequenceEqual(_disciplinesList)) continue;
+                                                Teacher teacher = settings.LoadAccount(teacherLogin) as Teacher;
+                                                updatedTeachersList.Add((teacher, _disciplinesList, disciplinesList.ToArray()));
+                                            }
+                                        }
+                                        foreach (string teacherLogin in deletedTeachers)
+                                        {
+                                            Teacher teacher = settings.LoadAccount(teacherLogin) as Teacher;
+                                            byte[] _disciplinesList = _teachersDisciplines[Array.IndexOf(_teachers, teacherLogin)];
+
+                                        }
+
+                                        SetStudentsGroup(deletedStudents, "");
+                                        SetStudentsGroup(newStudentsList, group.Name);
+                                        SetTeachersGroupAndDisciplines(newTeachersList, group);
+                                        UpdateTeachersGroupAndDisciplines(updatedTeachersList, group, _name != group.Name ? group.Name : null);
+                                        RemoveTeachersFromGroup(deletedTeachers, group.Name);
+
+                                        msg = ""; return true;
+                                    },
                                     new ICustomEditor<Group>[]
                                     {
                                         new TeachersAndDisciplinesEditor(group, "Дисциплины преподавателей")
                                     }
                                 );
                                 if (editor.Edit())
-                                    group.Export(settings);
+                                    group.ExportInfo(settings);
                                 editor.Clear();
                             }
                             break;
                         case 1: //Journal
                             {
-
+                                JournalEditor editor = new JournalEditor(group, CurrentAccount, settings);
+                                if (editor.Edit())
+                                    group.ExportJournal(settings);
+                                editor.Clear();
                             }
                             break;
                     }
