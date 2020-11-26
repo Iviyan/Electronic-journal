@@ -26,15 +26,40 @@ namespace Electronic_journal
             Admin ad = new Admin("admin", "admin");
             //if (1 is >= 0 and <= 3)
 
-            /*Group gr = new Group("П50-1-19");
+            /*Group gr = new Group("Gtest");
             gr.Teachers.Add("t1");
             gr.Teachers.Add("t2");
+            gr.Teachers.Add("t3");
+            gr.Teachers.Remove("t2");
             gr.Disciplines.Add("d1");
             gr.Disciplines.Insert(0, "d0");
             gr.AddDisciplineForTeacher(0, 1);
             gr.Students.Add("st1");
             gr.Students.Add("st2");
-            gr.AddMark(0, 0, 5, DateTime.Today);*/
+            gr.AddMark(0, 0, 5, DateTime.Today);
+            gr.AddMark(0, 0, 4, DateTime.Today);
+            gr.AddMark(0, 0, 5, DateTime.Today);
+            gr.AddMark(0, 1, 3, DateTime.Today);*/
+
+            /*Random r = new Random();
+            ConsoleSelect menu = new(new string[] { "1", "02", "003", "0004", "00005", "000006"*//*, "0000007", "00000008"*//* }, startY: 1, maxHeight: 5);
+
+            int select = 0;
+            while (true)
+            {
+                select = menu.Choice(select,
+                    (ConsoleKeyInfo key, int selectedIndex) =>
+                    {
+                        if (key.Key == ConsoleKey.Escape) return -1;
+                        if (key.Key == ConsoleKey.Delete) menu.Choices.RemoveAt(selectedIndex);
+                        if (key.Key == ConsoleKey.I) menu.Choices.Insert(selectedIndex, r.Next().ToString());
+                        if (key.Key == ConsoleKey.A) menu.Choices.Add(r.Next().ToString());
+                        if (key.Key == ConsoleKey.E) menu.Choices[selectedIndex] += "-";
+                        if (key.Key == ConsoleKey.D) menu.Choices[selectedIndex] = menu.Choices[selectedIndex].Substring(0, menu.Choices[selectedIndex].Length - 1);
+                        return null;
+                    });
+            }*/
+
             //Helper.mb(typeof(int[]).IsValueType);
 
             /*(gr.Teachers as IList<string>).Add("t1");
@@ -51,6 +76,7 @@ namespace Electronic_journal
 
             Settings settings = new Settings();
             //gr.Export(settings);
+            //settings.AddGroup(gr);
             //settings.RemoveAccount("Ivan_V");
             /*Student st = new Student("Ivan_V", "12345", "Иван", "Воркунов", "Викторович", DateTime.Today, "П50-1-19");
             var w = settings.GetAccountFileWriter("IV", FileMode.Create);

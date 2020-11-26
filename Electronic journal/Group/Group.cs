@@ -88,8 +88,6 @@ namespace Electronic_journal
 
                         for (byte k = 0; k < markCount; k++)
                             disciplineMarks.Add((reader.ReadByte(), reader.ReadDateTime()));
-
-                        studentMarks.Add(disciplineMarks);
                     }
                 }
             }
@@ -152,6 +150,7 @@ namespace Electronic_journal
         }
         private void Teachers_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            //Teachers.ToArray().mb();
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
@@ -167,17 +166,18 @@ namespace Electronic_journal
                     break;
                 case NotifyCollectionChangedAction.Remove:
                     if (e.OldStartingIndex == Teachers.Count)
-                        Teacher_disciplines.Remove((byte)e.NewStartingIndex);
+                        Teacher_disciplines.Remove((byte)e.OldStartingIndex);
                     else
                     {
-                        Teacher_disciplines.Remove((byte)e.NewStartingIndex);
-                        for (byte i = (byte)(e.NewStartingIndex + 1); i < Teachers.Count - 1; i++)
+                        Teacher_disciplines.Remove((byte)e.OldStartingIndex);
+                        for (byte i = (byte)(e.OldStartingIndex + 1); i < Teachers.Count - 1; i++)
                             Teacher_disciplines.ChangeKey(i, (byte)(i - 1));
                     }
                     //Helper.mb("trem ", e.OldStartingIndex);
                     break;
                     
             }
+            //Teacher_disciplines.Keys.ToArray().mb();
         }
 
         public void AddDisciplineForTeacher(byte teacherIndex, byte disciplineIndex)
@@ -261,12 +261,14 @@ namespace Electronic_journal
                 byte teachersCount = reader.ReadByte();
                 for (byte i = 0; i < teachersCount; i++)
                 {
-                    if (reader.ReadString() == teacher) ;
-                    byte teacherDisciplinesCount = reader.ReadByte();
-                    string[] disciplines = new string[teacherDisciplinesCount];
-                    for (byte j = 0; j < teacherDisciplinesCount; j++)
-                        disciplines[j] = Disciplines[reader.ReadByte()];
-                    return disciplines;
+                    if (reader.ReadString() == teacher)
+                    {
+                        byte teacherDisciplinesCount = reader.ReadByte();
+                        string[] disciplines = new string[teacherDisciplinesCount];
+                        for (byte j = 0; j < teacherDisciplinesCount; j++)
+                            disciplines[j] = Disciplines[reader.ReadByte()];
+                        return disciplines;
+                    }
                 }
             }
             return null;

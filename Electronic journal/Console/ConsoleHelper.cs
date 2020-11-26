@@ -27,6 +27,7 @@ namespace Electronic_journal
             if (length == -1) length = Console.WindowWidth;
             if (text.Length > length) { text = text.Substring(0, length); Console.CursorLeft = x1; Console.Write(text); }
             int startX = x1 + length / 2 - (int)Math.Ceiling(text.Length / 2d);
+            if (startX < x1) startX = x1;
             if (fillLeft != ' ') { Console.CursorLeft = x1; Console.Write(new string(fillLeft, startX - x1)); }
             else Console.CursorLeft = startX;
             Console.Write(text);

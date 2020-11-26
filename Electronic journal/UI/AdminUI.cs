@@ -35,6 +35,7 @@ namespace Electronic_journal
             {
                     "Информация",
                     "Журнал",
+                    "Назад",
             };
 
         public AdminUI(Admin account, Settings settings)
@@ -88,13 +89,13 @@ namespace Electronic_journal
             for (; ; )
             {
                 UpdateGroupsList();
-                menu.Update(groupsList);
+                menu.Update(groupsList.Add("Назад"));
                 selectedIndex = menu.Choice(
                     selectedIndex,
                     (ConsoleKeyInfo key, int selectedIndex) =>
                     {
                         if (key.Key == ConsoleKey.Escape) return -1;
-                        if (key.Key == ConsoleKey.Delete)
+                        if (key.Key == ConsoleKey.Delete && selectedIndex < groupsList.Length)
                         {
                             settings.RemoveGroup(groupsList[selectedIndex]);
                             menu.Choices.RemoveAt(selectedIndex);
@@ -102,6 +103,7 @@ namespace Electronic_journal
                         return null;
                     }
                 );
+                if (selectedIndex == groupsList.Length) break;
                 if (selectedIndex >= 0)
                     ShowGroupEditMenu(selectedIndex);
                 else
@@ -115,13 +117,13 @@ namespace Electronic_journal
             for (; ; )
             {
                 UpdateAccountsList();
-                menu.Update(accountsList);
+                menu.Update(accountsList.Add("Назад"));
                 selectedIndex = menu.Choice(
                     selectedIndex,
                     (ConsoleKeyInfo key, int selectedIndex) =>
                     {
                         if (key.Key == ConsoleKey.Escape) return -1;
-                        if (key.Key == ConsoleKey.Delete)
+                        if (key.Key == ConsoleKey.Delete && selectedIndex < accountsList.Length)
                         {
                             settings.RemoveAccount(accountsList[selectedIndex]);
                             menu.Choices.RemoveAt(selectedIndex);
@@ -129,6 +131,7 @@ namespace Electronic_journal
                         return null;
                     }
                 );
+                if (selectedIndex == accountsList.Length) break;
                 if (selectedIndex >= 0)
                     ShowAccountEditMenu(selectedIndex);
                 else
@@ -179,7 +182,7 @@ namespace Electronic_journal
             if (student.Group != "")
             {
                 if (groupsList == null) UpdateGroupsList();
-                if (groupsList.Contains(student.Group))
+                if (!groupsList.Contains(student.Group))
                 {
                     msg = $"Группы {student.Group} не существует";
                     return false;
@@ -243,15 +246,20 @@ namespace Electronic_journal
                                 account.Export(writer);
                         editor.Clear();
 
-                        if (studentGroup != "" && student.Group != studentGroup && groupsList.Contains(studentGroup))
+                        if (studentGroup != "" && student.Group != studentGroup)
                         {
-                            Group group = new Group(settings, studentGroup);
-                            if (group.Students.Contains(student.Login))
+                            Group previousGroup = new Group(settings, studentGroup);
+                            if (previousGroup.Students.Contains(student.Login))
                             {
-                                group.Students.Remove(student.Login);
-                                group.Export(settings);
+                                previousGroup.Students.Remove(student.Login);
+                                previousGroup.Export(settings);
                             }
-
+                            if (student.Group != "" && groupsList.Contains(student.Group))
+                            {
+                                Group newGroup = new Group(settings, student.Group);
+                                newGroup.Students.Add(student.Login);
+                                newGroup.Export(settings);
+                            }
                         }
                     }
                     break;
@@ -301,6 +309,8 @@ namespace Electronic_journal
                     case 2: //Student
                         {
                             account = new Student("", "", "", "", "", DateTime.Today, "");
+                            Student student = (Student)account;
+
                             ClassEditor<Student> editor = new ClassEditor<Student>(
                                 (Student)account,
                                 validateStudent
@@ -308,6 +318,13 @@ namespace Electronic_journal
                             if (editor.Edit())
                                 settings.AddAccount(account);
                             editor.Clear();
+
+                            if (student.Group != "" && groupsList.Contains(student.Group))
+                            {
+                                Group group = new Group(settings, student.Group);
+                                group.Students.Add(student.Login);
+                                group.Export(settings);
+                            }
                         }
                         break;
                 }
@@ -457,6 +474,7 @@ namespace Electronic_journal
 
         void ShowGroupAddMenu()
         {
+            UpdateAccountsList();
             menu.Clear();
             Group group = new Group("");
             ClassEditor<Group> editor = new ClassEditor<Group>(
@@ -499,6 +517,7 @@ namespace Electronic_journal
 
         void ShowGroupEditMenu(int index)
         {
+            UpdateAccountsList();
             int selectedIndex = 0;
             for (; ; )
             {
@@ -511,7 +530,7 @@ namespace Electronic_journal
                         return null;
                     }
                 );
-                if (selectedIndex >= 0)
+                if (selectedIndex >= 0 && selectedIndex <= 1)
                 {
                     menu.Clear();
                     Group group = new Group(settings, groupsList[index]);

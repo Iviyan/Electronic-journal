@@ -155,11 +155,11 @@ namespace Electronic_journal
                     groups.Add(reader.ReadString());
             groups.Remove(groupName);
 
-            using (BinaryWriter writer = GroupsListFile.GetFileWriter())
+            using (BinaryWriter writer = GroupsListFile.GetFileWriter(FileMode.Truncate))
                 for (int i = 0; i < groups.Count; i++)
                     writer.Write(groups[i]);
 
-            Directory.Delete(GetGroupFolderPatch(groupName));
+            Directory.Delete(GetGroupFolderPatch(groupName), true);
         }
 
     }
