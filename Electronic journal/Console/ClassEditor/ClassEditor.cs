@@ -88,7 +88,7 @@ namespace Electronic_journal
             Changes = new (bool, object)[Properties.Length];
             for (int i = 0; i < Properties.Length; i++)
             {
-                bool isValueType = Properties[i].property.PropertyType.IsValueType;
+                bool isValueType = Properties[i].property.PropertyType.IsValueType || Properties[i].property.PropertyType == typeof(string);
                 Changes[i] = (isValueType, isValueType ? Properties[i].property.GetValue(obj) : false);
             }
 
