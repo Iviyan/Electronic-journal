@@ -58,6 +58,7 @@ namespace Electronic_journal
             int selectedIndex = 0;
             for (; ; )
             {
+                Console.SetCursorPosition(0, 0);
                 ConsoleHelper.WriteCenter("Администратор");
                 menu.Clear();
                 menu.StartY = 2;
@@ -368,7 +369,6 @@ namespace Electronic_journal
             }
         }
 
-        // TODO: сделать проверку на: существование студентов, учителей, наличие у них дисциплин -> classEditor + Warnings
         bool validateGroupName(Group group, string[] changedProperties, out string msg)
         {
             if (changedProperties.Contains(nameof(group.Name)) && groupsList.Contains(group.Name))
@@ -428,8 +428,8 @@ namespace Electronic_journal
                     int index = Array.IndexOf(teacher.teacher.Groups, groupPreviousName);
                     teacher.teacher.Groups[index] = group.Name;
                 }
-                var newDisciplines = teacher.disciplines.Except(teacher._disciplines);//.ToArray();
-                var deletedDisciplines = teacher._disciplines.Except(teacher.disciplines);//.ToArray();
+                var newDisciplines = teacher.disciplines.Except(teacher._disciplines);
+                var deletedDisciplines = teacher._disciplines.Except(teacher.disciplines);
                 foreach (byte d in newDisciplines)
                     if (!teacher.teacher.Disciplines.Contains(group.Disciplines[d]))
                         teacher.teacher.Disciplines = teacher.teacher.Disciplines.Add(group.Disciplines[d]);
