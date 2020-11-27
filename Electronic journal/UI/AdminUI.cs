@@ -19,7 +19,8 @@ namespace Electronic_journal
                     "Аккаунты",
                     "Добавить аккаунт",
                     "Добавить группу",
-                    "Сменить пароль"
+                    "Сменить пароль",
+                    "Выход"
                 };
         string[] groupsList;
         string[] accountsList;
@@ -44,18 +45,31 @@ namespace Electronic_journal
             CurrentAccount = account;
 
             menu = new ConsoleSelect(
-                mainMenu
+                mainMenu,
+                startY: 2,
+                write: false
             );
 
             ShowMainMenu();
+            Console.SetCursorPosition(0, 0);
         }
         void ShowMainMenu()
         {
             int selectedIndex = 0;
             for (; ; )
             {
-                menu.Update(mainMenu);
+                ConsoleHelper.WriteCenter("Администратор");
+                menu.Clear();
+                menu.StartY = 2;
+                menu.Update(mainMenu, false);
                 selectedIndex = menu.Choice(selectedIndex);
+                if (selectedIndex != 4)
+                {
+                    ConsoleHelper.ClearArea(0, 0, Console.WindowWidth - 1, 0);
+                    menu.Clear();
+                    menu.StartY = 0;
+                }
+
                 switch (selectedIndex)
                 {
                     case 0:
@@ -72,13 +86,16 @@ namespace Electronic_journal
                         break;
                     case 4:
                         string pass = CurrentAccount.Password;
-                        if (UIFunctions.ChangePassword(ref pass, 6))
+
+                        if (UIFunctions.ChangePassword(ref pass, 2 + mainMenu.Length + 1))
                         {
                             CurrentAccount.Password = pass;
                             using (BinaryWriter writer = settings.GetAccountFileWriter(CurrentAccount.Login))
                                 CurrentAccount.Export(writer);
                         }
+                        Console.SetCursorPosition(0, 0);
                         break;
+                    case 5: return;
                 }
             }
         }
@@ -202,10 +219,10 @@ namespace Electronic_journal
         void ShowAccountEditMenu(int index)
         {
             Account account = settings.LoadAccount(accountsList[index]);
-            string login = account.Login;
+            string _login = account.Login;
             menu.Clear();
 
-            BinaryWriter RewriteFile() => settings.GetAccountFileWriter(login);
+            BinaryWriter RewriteFile() => settings.GetAccountFileWriter(_login);
 
             switch (account.Type)
             {
@@ -223,6 +240,7 @@ namespace Electronic_journal
                     break;
                 case AccountType.Teacher:
                     {
+                        Teacher teacher = (Teacher)account;
                         ClassEditor<Teacher> editor = new ClassEditor<Teacher>(
                             (Teacher)account,
                             validateTeacher
@@ -231,12 +249,22 @@ namespace Electronic_journal
                             using (var writer = RewriteFile())
                                 account.Export(writer);
                         editor.Clear();
+
+                        if (_login != teacher.Login)
+                        {
+                            foreach (string groupName in teacher.Groups)
+                            {
+                                Group group = new Group(settings, groupName);
+                                group.Teachers[Array.IndexOf(group.Teachers.ToArray(), _login)] = teacher.Login;
+                                group.ExportInfo(settings);
+                            }
+                        }
                     }
                     break;
                 case AccountType.Student:
                     {
                         Student student = (Student)account;
-                        string studentGroup = student.Group;
+                        string _group = student.Group;
                         ClassEditor<Student> editor = new ClassEditor<Student>(
                             student,
                             validateStudent
@@ -246,12 +274,12 @@ namespace Electronic_journal
                                 account.Export(writer);
                         editor.Clear();
 
-                        if (studentGroup != "" && student.Group != studentGroup)
+                        if (_group != "" && student.Group != _group)
                         {
-                            Group previousGroup = new Group(settings, studentGroup);
-                            if (previousGroup.Students.Contains(student.Login))
+                            Group previousGroup = new Group(settings, _group);
+                            if (previousGroup.Students.Contains(_login))
                             {
-                                previousGroup.Students.Remove(student.Login);
+                                previousGroup.Students.Remove(_login);
                                 previousGroup.Export(settings);
                             }
                             if (student.Group != "" && groupsList.Contains(student.Group))
@@ -261,9 +289,18 @@ namespace Electronic_journal
                                 newGroup.Export(settings);
                             }
                         }
+                        if (_login != student.Login)
+                        {
+                            Group group = new Group(settings, student.Group);
+                            group.Students[Array.IndexOf(group.Students.ToArray(), _login)] = student.Login;
+                            group.ExportInfo(settings);
+                        }
                     }
                     break;
             }
+
+            if (_login != account.Login)
+                settings.RenameAccount(_login, account.Login);
         }
 
         void ShowAccountAddMenu()
@@ -614,7 +651,7 @@ namespace Electronic_journal
                                 JournalEditor editor = new JournalEditor(group, CurrentAccount, settings);
                                 if (editor.Edit())
                                     group.ExportJournal(settings);
-                                editor.Clear();
+                                //editor.Clear();
                             }
                             break;
                     }

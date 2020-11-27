@@ -329,7 +329,10 @@ namespace Electronic_journal
                 case string val:
                     CheckBackspace();
                     if (Reader.ReadLine_esc(ref input, backspace ? "" : val, false))
+                    {
                         p.property.SetValue(Obj, input);
+                        ValuesLength[SelectedIndex] = input.Length;
+                    }
                     else if (backspace)
                         updateCurrentValue(val);
                     break;

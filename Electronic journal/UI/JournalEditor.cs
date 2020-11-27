@@ -56,17 +56,16 @@ namespace Electronic_journal
                         if (key.Key == ConsoleKey.Escape) return -1;
                         return null;
                     }, true);
-                if (select == -1) return false;
+                if (select == -1) break;
                 if (select == choices.Length - 1) break;
                 menu.Clear();
                 EditDiscipline(select);
             }
-
-            return true;
+            menu.Clear();
+            return select >= 0;
         }
         bool EditDiscipline(int disciplineIndex)
         {
-            ConsoleHelper.WriteCenter(Group_.Disciplines[disciplineIndex]);
             string[] choices = Group_.Students
                 .Select(
                     studentLogin => {
@@ -101,6 +100,8 @@ namespace Electronic_journal
             int select = 0;
             while (true)
             {
+                Console.SetCursorPosition(0, 0);
+                ConsoleHelper.WriteCenter(Group_.Disciplines[disciplineIndex]);
                 select = menu.Choice(select,
                     (ConsoleKeyInfo key, int selectedIndex) =>
                     {
@@ -167,7 +168,7 @@ namespace Electronic_journal
                         }
                         return null;
                     });
-                if (select == -1) { menu.Clear(); return false; }
+                if (select == -1) break;
                 if (select == menu.Choices.Count - 1) break; // Сохранить
                 if (select == menu.Choices.Count - 2) // Добавить
                 {
@@ -195,14 +196,9 @@ namespace Electronic_journal
                     editor.Clear();
                 }
             }
-
+            ConsoleHelper.ClearArea(0, 0, Console.WindowWidth - 1, 0);
             menu.Clear();
-            return true;
-        }
-
-        public void Clear()
-        {
-
+            return select >= 0;
         }
     }
 }

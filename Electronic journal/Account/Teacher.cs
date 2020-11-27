@@ -40,7 +40,7 @@ namespace Electronic_journal
 
         public void UI(Settings settings)
         {
-
+            new TeacherUI(this, settings);
         }
     }
 }

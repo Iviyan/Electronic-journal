@@ -34,7 +34,7 @@ namespace Electronic_journal
 
         public void UI(Settings settings)
         {
-
+            new StudentUI(this, settings);
         }
     }
 }

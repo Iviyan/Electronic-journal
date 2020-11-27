@@ -72,6 +72,23 @@ namespace Electronic_journal
 
             File.Delete(GetAccountFilePatch(login));
         }
+        public void RenameAccount(string oldLogin, string newLogin)
+        {
+            List<string> accounts = new();
+            using (BinaryReader reader = AccountsListFile.GetFileReader())
+                while (reader.PeekChar() > -1)
+                {
+                    string login = reader.ReadString();
+                    if (login == oldLogin) login = newLogin;
+                    accounts.Add(login);
+                }
+
+            using (BinaryWriter writer = AccountsListFile.GetFileWriter(FileMode.Truncate))
+                for (int i = 0; i < accounts.Count; i++)
+                    writer.Write(accounts[i]);
+
+            File.Move(GetAccountFilePatch(oldLogin), GetAccountFilePatch(newLogin));
+        }
 
         public Account LoadAccount(string login)
         {

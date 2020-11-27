@@ -53,7 +53,8 @@ namespace Electronic_journal
             }
         }
         public int CurrentMaxWidth { get; private set; }
-        public int CurrentHeight { get; private set; }
+        public int CurrentHeight { get; private set; } = 0;
+        public int ContentHeight { get; private set; }
         public ObservableCollection<string> Choices { get; private set; }
         private HashSet<int> Disabled;
         private int interval;
@@ -142,9 +143,9 @@ namespace Electronic_journal
             if (write) Write();
         }
 
-        public void Update(string[] choices)
+        public void Update(string[] choices, bool clear = true)
         {
-            Clear();
+            if (clear) Clear();
             selectedIndex = 0;
             Pages = null;
             page = 0;
@@ -452,7 +453,7 @@ namespace Electronic_journal
                     );
                 line += lineHeight + interval;
             }
-            CurrentHeight = line - interval;
+            ContentHeight = line - interval;
             //Helper.mb(Helper.ArrayToStr(selHelper));
         }
         void CalculatePages(int startIndex = 0)
@@ -601,11 +602,14 @@ namespace Electronic_journal
             {
                 line += interval + WriteLine(Choices[i], line);
             }
+            CurrentHeight = ContentHeight;
         }
         public void Clear()
         {
+            if (CurrentHeight == 0) return;
             ConsoleHelper.ClearArea(StartX, StartY, StartX + CurrentMaxWidth + 1, StartY + CurrentHeight);
             Console.SetCursorPosition(0, StartY);
+            CurrentHeight = 0;
         }
         public void Clear(int startIndex, int endIndex)
         {

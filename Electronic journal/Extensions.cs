@@ -54,7 +54,7 @@ namespace Electronic_journal
             newArr[arr.Length] = elem;
             return newArr;
         }
-        
+
         public static int Read7BitEncodedInt(this System.IO.BinaryReader reader)
         {
             uint result = 0;
@@ -99,7 +99,11 @@ namespace Electronic_journal
             for (int i = 0; i < length; i++) result[i] = reader.ReadString();
             return result;
         }
-        public static void SkipString(this BinaryReader reader) => reader.BaseStream.Position += reader.Read7BitEncodedInt();
+        public static void SkipString(this BinaryReader reader)
+        {
+            int len = reader.Read7BitEncodedInt();
+            reader.BaseStream.Position += len;
+        }
 
         public static void Write(this BinaryWriter writer, DateTime date) => writer.Write(date.ToBinary());
         public static DateTime ReadDateTime(this BinaryReader reader) => DateTime.FromBinary(reader.ReadInt64());
